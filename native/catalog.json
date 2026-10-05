@@ -7,7 +7,7 @@
       "name": "rebirth1",
       "executable": "NeptuniaReBirth1.exe",
       "steam_folder": "Neptunia Rebirth1",
-      "local_record": "reports/rebirth1-local-install.json",
+      "local_record": "build/rebirth1-local-install.json",
       "hashes": {
         "baseline": "0a6fdae55681019c9612f2da5e59c7539a2def22f66546695b8e9978ca88ab71",
         "laa": "40d3439cbe97a4411dfb64beb04c5f65e06be1969fc9639afa7ec012918c2d53",
@@ -23,7 +23,7 @@
       "name": "rebirth2",
       "executable": "NeptuniaReBirth2.exe",
       "steam_folder": "Neptunia Rebirth2",
-      "local_record": "reports/rebirth2-local-install.json",
+      "local_record": "build/rebirth2-local-install.json",
       "hashes": {
         "baseline": "f0b0b9fe40a26a001d0ac87702d51844f19900cfabe3d38680b885cc607c2fb2",
         "laa": "987fdcf2840e8bbf94ce706746bcd3168b8b94e4984824262ebb7dfe69b3a156",
@@ -39,7 +39,7 @@
       "name": "rebirth3",
       "executable": "NeptuniaReBirth3.exe",
       "steam_folder": "Hyperdimension Neptunia Re;Birth3",
-      "local_record": "reports/rebirth3-local-install.json",
+      "local_record": "build/rebirth3-local-install.json",
       "hashes": {
         "baseline": "455ab306a0e44b6e97af1ce2f7c6cf3b56c0352aaa1d62d24fffc2b11088751b",
         "laa": "41f988b3bcbeb6c5953b995ced27edb2f8fbc7d9c168203ad65c7c9213ecdd3d",
@@ -55,7 +55,7 @@
       "name": "neptune-vs-sega-hard-girls",
       "executable": "Neptune VSSega Hard Girls.exe",
       "steam_folder": "Superdimension Neptune VS Sega Hard Girls",
-      "local_record": "reports/sega-hard-girls-local-install.json",
+      "local_record": "build/sega-hard-girls-local-install.json",
       "hashes": {
         "baseline": "af9550b0b5ab90810e31274066f13b3e1b224ef5960951a44d2acd53903523e5",
         "laa": "a3c1aab3713b569630361b5fae951da6987e38651ac1c378f3b6d5dc3d8f1a1b",
