@@ -1,11 +1,42 @@
 """Shared-shell adapter/settings-only tests on isolated copied baselines; no game launch."""
 import configparser
+import os
 from pathlib import Path
 import unittest
 from test_prepare_game_native import PreparerFixture, digest
 
 
 class Ui(PreparerFixture):
+    def test_previous_production_proxy_updates_and_rolls_back(self):
+        # Supply audited bytes extracted from the retained 0.2.0 release package.
+        # This exercises recognition and transactions rather than reading the registry.
+        previous = Path(os.environ.get('REBIRTHS_PREVIOUS_RELEASE_PROXY', 'unavailable-previous-release-proxy'))
+        if not previous.is_file():
+            self.skipTest('Retained 0.2.0 production proxy was not supplied')
+        self.assertEqual(digest(previous), 'b506b808e328c37db9481712fef6807fe6a75c6f19ab17b384bef8dfafc866f9')
+        old = previous.read_bytes()
+        for index in range(4):
+            with self.subTest(game=index):
+                game, exe = self.fixture(index)
+                baseline = digest(exe)
+                proxy_directory = game / 'Birth3' if index == 2 else game
+                proxy_directory.mkdir(exist_ok=True)
+                proxy = proxy_directory / 'X3DAudio1_7.dll'
+                proxy.write_bytes(old)
+                config = proxy_directory / 'rebirths-patches.ini'
+                settings = b'[Patches]\r\nFastTextureConversion=0\r\n[Personal]\r\nKeep=preserved\r\n'
+                config.write_bytes(settings)
+                self.run_app('install', game)
+                self.assertNotEqual(proxy.read_bytes(), old)
+                parsed = configparser.ConfigParser()
+                parsed.read(config, encoding='utf-8')
+                self.assertEqual(parsed['Patches']['FastTextureConversion'], '0')
+                self.assertEqual(parsed['Personal']['Keep'], 'preserved')
+                self.run_app('rollback', game)
+                self.assertEqual(proxy.read_bytes(), old)
+                self.assertEqual(config.read_bytes(), settings)
+                self.assertEqual(digest(exe), baseline)
+
     def test_ui_feature_support_defaults_and_groups(self):
         expected = [
             {'FastTextureConversion', 'UncompressedAssets', 'AdvFastForward', 'AdvAutoSkip', 'SkipTutorials', 'downscale'},
