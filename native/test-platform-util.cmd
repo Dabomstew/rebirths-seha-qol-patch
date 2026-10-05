@@ -6,7 +6,7 @@ call :test 64 x64
 exit /b %errorlevel%
 
 :test
-call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars%1.bat"
+call "%~dp0..\scripts\init-msvc.cmd" %2
 if errorlevel 1 exit /b 1
 cd /d "%~dp0.."
 if not exist build\platform-util-build\%2 mkdir build\platform-util-build\%2
