@@ -245,7 +245,7 @@ class PreparerFixture(unittest.TestCase):
     def test_known_old_proxy_without_state_updates_and_rolls_back(self):
         expected = "c9accd7ac76ab9cd804565840e70b6188bc75ad2a471e23b4b1dd1c871b3c452"
         candidates = [ROOT / "build/qualify/installed/rebirth1/previous-X3DAudio1_7.dll",
-                      Path(r"F:\SteamLibrary\steamapps\common\Neptunia Rebirth1\X3DAudio1_7.dll")]
+                      Path(os.environ.get("REBIRTHS_HISTORICAL_PROXY", "unavailable-historical-proxy"))]
         old = next((p for p in candidates if p.is_file() and digest(p) == expected), None)
         if old is None:
             self.skipTest("Historical c9accd7a proxy bytes are unavailable locally")
