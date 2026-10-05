@@ -91,6 +91,12 @@
       "native/test-voice-tail.cmd"
     ],
     [
+      "native/build-asset-decoder.cmd"
+    ],
+    [
+      "native/build-texture-conversion-test.cmd"
+    ],
+    [
       "native/build-prepare-assets-test.cmd"
     ],
     [
