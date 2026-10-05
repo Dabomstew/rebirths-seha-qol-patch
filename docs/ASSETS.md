@@ -1,32 +1,33 @@
-# Prepared assets and ADV CG downscaling
+# Prepared assets and story-image downscaling
 
-The native **Prepare Game** app builds raw PAC assets for Re;Birth1, Re;Birth2,
-Re;Birth3 and Sega Hard Girls. Fresh installations enable **Use prepared
-assets** and **Downscale large ADV CGs**. The downscale profile halves a
-cataloged TID's full image when its original RGBA pixel payload is at least
-25,165,824 bytes (24 MiB). The pinned table contains 12 Re;Birth1, five
+The **Rebirths Preparer** app builds uncompressed PAC asset archives for
+Re;Birth1, Re;Birth2, Re;Birth3 and Sega Hard Girls. New installations enable
+**Use prepared assets** and **Downscale large story images**. The downscale
+profile halves a supported story illustration's width and height when its
+original RGBA pixel data takes at least 25,165,824 bytes (24 MiB).
+The list of supported images contains 12 Re;Birth1, five
 Re;Birth2 and 27 Re;Birth3 TIDs; Sega currently has none above the threshold.
 Unknown large entries retain their original bytes and are reported. Known
 entries whose identity or decoded source hash changed cause preparation to
 stop. The original archives, smaller layers and MA files remain intact.
 
 The GUI's default destination for a fresh install is
-`<game>\rebirths-speedrun-patch\cg24-v1`. Existing installations retain their
-active raw or pilot profile until changed. Switching the checkbox selects a
+`<game>\rebirths-speedrun-patch\cg24-v1`. Existing installations keep their
+current asset profile until you change it. Switching the checkbox selects a
 separate sibling destination, and a manually selected directory owned by a
-different recipe is refused. Preparation verifies the complete output before
-transactionally installing the proxy and configuration. Generated assets stay
+different profile is refused. Preparation verifies the complete output before
+installing the patch DLL and settings with backups for recovery. Generated assets stay
 local and are excluded from release packages. See the
 [User Guide](USER-GUIDE.md) for the normal app workflow.
 
-The earlier loose/raw-PAC research CLI remains available. Balanced comparisons
-selected raw PAC over loose files for all four games by the agreed tie
-preference; some battles showed no practical speedup. Broader playthrough,
-LAA and non-English runtime remain unqualified.
+The command-line tool can also create loose files. Comparisons across all four
+games found no reason to prefer them over uncompressed PAC archives, which are
+the default. Some battles showed no practical speedup. These asset-loading
+comparisons did not cover full playthroughs, 4GB-patched EXEs or non-English play.
 
 ## Prepare
 
-Use 64-bit Python and Visual Studio's C++ tools, from the child repository:
+Use 64-bit Python and Visual Studio's C++ tools, from the repository root:
 
 ```powershell
 .\native\build-asset-decoder.cmd
@@ -35,7 +36,7 @@ python native\prepare_assets.py prepare --game-directory 'D:\Games\Game' --backe
 python native\prepare_assets.py verify --game-directory 'D:\Games\Game'
 ```
 
-The earlier research CLI defaults to `<game>\rebirths-speedrun-patch\assets`.
+The command-line tool defaults to `<game>\rebirths-speedrun-patch\assets`.
 Override with `--output`.
 Prepare the loose alternative with `--backend loose` into a separate output
 directory. `--decoder` accepts a separately built decoder DLL. The CLI identifies
@@ -67,7 +68,7 @@ Directory=rebirths-speedrun-patch\assets
 Verify=0
 ```
 
-`Prepare Game` writes `UncompressedAssets=1` when **Use prepared assets** is
+`Rebirths Preparer` writes `UncompressedAssets=1` when **Use prepared assets** is
 selected; existing installations preserve their active setting when reopened.
 The manifest
 chooses the backend. Relative directories resolve from the EXE directory, even
@@ -81,21 +82,22 @@ does not hash every original PAC payload: changes preserving size/time/table can
 escape those lightweight checks. Reprepare after source changes and explicitly
 verify when integrity is uncertain.
 
-Native resolution and precedence remain authoritative. Each generated hit gets
+The game still chooses which asset to load and which archive takes precedence.
+Each generated hit gets
 its own handle and a normal native raw entry; native read/seek/close and resource
 cleanup remain in use. Unavailable generated entries fall back to original
-loading. Unsupported executables, unqualified Large Address Aware variants and
+loading. Unsupported executables, untested 4GB-patched variants and
 conflicting hooks retain original loading. No pooling, RAM cache or prefetching.
 
-## DLC and research exceptions
+## DLC and archive exceptions
 
 Installed DLC/language archives are discovered automatically; absent or empty
 optional roots are quietly ignored. Preparation does not activate DLC. Removed
 or changed source namespaces cannot be resurrected from stale output. Their
-fallback does not disable usable base assets. Runtime DLC qualification still
-requires positive generated reads from mounted DLC.
+fallback does not disable usable base assets. To confirm prepared DLC is being
+used, testing must observe reads from its prepared files.
 
-Unsupported malformed streams fail strict preparation. Research-only
+Preparation stops if it encounters an unsupported malformed stream. For diagnostic work,
 `--exclusions exceptions.json` accepts an array of records with `source`
 (game-relative PAC path), `sha256` (full source hash), `ordinal` (zero-based
 entry), and a nonempty `reason`. Excluded entries keep native fallback and the
@@ -107,8 +109,8 @@ fallback and reports incomplete coverage. A second observed PAC (SHA-256
 decode within their declared bounds, so the preparer gives this exact version
 full coverage. Other PAC hashes still stop before asset work. Never silently
 pad malformed streams.
-Any successful intercepted fallback invalidates a timed coverage cohort, even
-when the exception is known.
+When comparing prepared-asset performance, discard a run if any intercepted read
+falls back to the original archives, including known exceptions.
 
 ## Local checks
 
@@ -120,5 +122,6 @@ python -m unittest discover -s native\tests -p test_asset_store.py
 ```
 
 Preparation hashes and synthetic decoder tests are distinct from independent
-comparisons against the original game decoder. Keep correctness captures
-separate from balanced fresh-process performance measurements.
+comparisons against the original game decoder. Check correctness separately from
+performance. For timing comparisons, start a fresh game process for each run and
+balance the run order.

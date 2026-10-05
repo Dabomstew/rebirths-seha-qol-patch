@@ -8,6 +8,7 @@ Settings ReadSettings(const Game& game) {
     Settings s;
     auto config = SafeBelow(game.directory, game.proxyDirectory / L"rebirths-patches.ini");
     bool existing = fs::exists(config);
+    s.configHash = existing ? Hash(config) : "";
     auto assetText =
         Ini(config, L"UncompressedAssets", L"Directory",
             existing ? L"rebirths-speedrun-patch\\assets" : L"rebirths-speedrun-patch\\cg24-v1");
@@ -22,6 +23,8 @@ Settings ReadSettings(const Game& game) {
         s.*binding.member = GetPrivateProfileIntW(L"Patches", feature.key,
             existing ? feature.existingDefault : feature.freshDefault, config.c_str()) != 0;
     }
+    Need((fs::exists(config) ? Hash(config) : "") == *s.configHash,
+         "Settings changed while reading; reload settings");
     return s;
 }
 

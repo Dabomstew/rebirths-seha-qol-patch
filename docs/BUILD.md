@@ -15,23 +15,31 @@ Build intermediates are ignored under `build/`; verified packages are under
 `dist/<project>-<version>/`, with matching ZIP and ZIP checksum beside that folder.
 Existing release outputs are never overwritten.
 
-`VERSION` is the release version authority. Generated native constants, Windows
-version resources, package names and manifests use it. Projects advance
-independently: patch for compatible fixes, minor for features or pre-1.0 breaking
-changes, major for breaking changes after 1.0. Earlier deliveries are prerelease
-history. ABI, asset-format and cache-schema versions are independent contracts.
+The release version comes from `VERSION`. Generated C++ constants, Windows
+version resources, package names and manifests use that value. Each project
+has its own release number: patch for compatible fixes, minor for features or
+pre-1.0 breaking changes, and major for breaking changes after 1.0. Earlier
+deliveries were prereleases. ABI, asset-format and cache-schema versions are
+tracked separately.
 
 Package only a clean production commit after building with `-Tests`. Packaging
 checks all tracked source hashes, artifact identities, PE architectures, embedded
 resources where applicable, archive membership, bytes, links and checksums.
-Only the current committed production source revision appears in the manifest.
+The manifest records the production commit used to build the package.
 PDBs, build identities, synthetic fixtures and game data are not distributed.
 
 Tests requiring an original game executable run locally with explicit baseline
 paths. They copy fixtures and must never launch or modify the supplied baseline.
-Game-backed and desktop checks are separate from the synthetic CI suite.
+Tests using game files and desktop UI checks run separately from the synthetic CI suite.
 
 Never push development history into production. Public releases are assembled
 from reviewed exports in an isolated publishing repository. A new build can have
 a different hash with another toolchain; CI success does not establish bit-for-bit
 identity with a locally reviewed release binary.
+
+The preparer compiles the shared UI source in `native/preparer-common/` and its
+game adapter into the executable. `native/preparer-components.json`
+records exact source hashes. Its synthetic `session_test.cpp` can be compiled
+with `preparer.cpp` using C++17 and the static runtime; it uses fictional games
+and fake launchers. Backend integration fixtures require local copied baselines
+and must never launch a game or modify an installed executable.

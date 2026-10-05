@@ -22,7 +22,7 @@ Result Process(const fs::path& selected, const fs::path& selectedOutput, uint32_
         Need(fs::is_directory(root), "Output is not a directory");
         if (!fs::exists(owner))
             Need(fs::directory_iterator(root) == fs::directory_iterator{},
-                 "Unowned nonempty output refused");
+                 "This output folder contains files the preparer does not own. Choose an empty folder.");
     } else {
         Need(write, "Prepared output missing");
         fs::create_directories(root);
@@ -58,7 +58,7 @@ Result Process(const fs::path& selected, const fs::path& selectedOutput, uint32_
                         name.rfind("event\\ma\\", 0) == 0 &&
                         name.find("\\tex_") != std::string::npos && name.size() >= 4 &&
                         name.substr(name.size() - 4) == ".tid" && !SelectedHalf(s, e, id, profile))
-                        ReportAt(report, L"Uncataloged large ADV CG (left original)",
+                        ReportAt(report, L"Unknown large story image (kept at original size)",
                                  fs::path(s.path), e.ordinal, s.entries.size());
                 }
         if ((profile == TransformProfile::Rb3Ma123Pilot ||

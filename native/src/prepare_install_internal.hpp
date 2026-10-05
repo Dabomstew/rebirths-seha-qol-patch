@@ -41,5 +41,6 @@ fs::path ValidateBackup(const Game& game, const std::wstring& text);
 void RestoreChecked(const fs::path& source, const fs::path& target);
 void WriteSettings(const Game& game, const Settings& settings, const fs::path& assets,
                    const fs::path& staged, bool hadConfig);
+void Preflight(const Game& game, const Settings& settings);
 void InstallPrepared(const Game& game, const Settings& settings, const fs::path& assets);
 } // namespace rebirths::prepare::install

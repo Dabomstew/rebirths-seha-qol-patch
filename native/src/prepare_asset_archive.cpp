@@ -80,7 +80,7 @@ std::vector<Source> Collect(const fs::path& game, uint32_t id, bool dlc, const R
     for (const auto& name : names) {
         CheckCancel(cancel);
         auto path = Safe(game, name);
-        ReportAt(report, L"Hashing source", path, out.size(), names.size());
+        ReportAt(report, L"Checking source files", path, out.size(), names.size());
         auto h = rebirths::assets::OpenRead(path);
         Source s{};
         s.path = name;

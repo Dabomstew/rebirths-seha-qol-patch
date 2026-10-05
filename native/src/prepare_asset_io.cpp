@@ -9,7 +9,7 @@ void Need(bool good, const char* why) {
 }
 void CheckCancel(const Cancel& cancel) {
     if (cancel && cancel())
-        throw std::runtime_error("Cancelled; completed source archives remain resumable");
+        throw std::runtime_error("Cancelled; completed archives are saved. Run preparation again to continue.");
 }
 Hash Digest(const void* p, size_t n) {
     Sha s;

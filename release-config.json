@@ -22,6 +22,9 @@
   },
   "test_commands": [
     [
+      "native/test-preparer-session.cmd"
+    ],
+    [
       "native/test-adv-operations.cmd"
     ],
     [

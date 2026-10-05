@@ -1,4 +1,5 @@
 #include "prepare_game.hpp"
+#include "prepare_ui_adapter.hpp"
 #include "prepare_feature_settings.hpp"
 #include <cstdio>
 #include <stdexcept>
@@ -11,6 +12,19 @@ int wmain(int argc,wchar_t** argv){
         }
         if(argc<3||argc>4)throw std::runtime_error("usage: preparer-test inspect|settings|prepare|prepare-raw|prepare-adv-cg|prepare-ma123|prepare-large-ma|rollback|uninstall|apply-4gb|restore-exe game [assets]");
         auto game=rebirths::prepare::OpenGame(argv[2]);auto action=std::wstring(argv[1]);
+        if(action==L"ui-features") {
+            rebirths::prepare::UiAdapter adapter; auto view = adapter.Open(argv[2]);
+            for (auto& f : view.features) std::printf("%s=%d group=%u\n", f.id.c_str(), f.value, f.group);
+            return 0;
+        }
+        if(action==L"install" || action==L"install-stale" || action==L"install-absent-stale" || action==L"install-off") {
+            auto settings=rebirths::prepare::ReadSettings(game);
+            if(argc==4)settings.assets=argv[3];
+            if(action==L"install-stale") settings.configHash=std::string(64, '0');
+            if(action==L"install-absent-stale") settings.configHash=std::string();
+            if(action==L"install-off")for(const auto& binding:rebirths::prepare::FeatureBindings) settings.*binding.member=false;
+            rebirths::prepare::ApplySettings(game,settings); std::printf("OK\n");return 0;
+        }
         if(action==L"inspect"){
             std::wprintf(L"game=%u exe=%ls proxy=%ls original=%d ntcore=%d\n",game.id,game.executable.c_str(),game.proxyDirectory.c_str(),game.originalExecutable,game.ntcoreExecutable);return 0;
         }

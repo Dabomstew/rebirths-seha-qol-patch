@@ -185,7 +185,7 @@ class NativePreparationTests(unittest.TestCase):
             (b"event\\ma\\9999\\tex_01.tid", at, 0)], part=1)
         output = self.root / "unknown-cg"
         result = self.native("prepare-adv-cg", output)
-        self.assertEqual(result.stderr.count("Uncataloged large ADV CG"), 1)
+        self.assertEqual(result.stderr.count("Unknown large story image"), 1)
         self.native("verify-adv-cg", output)
 
 

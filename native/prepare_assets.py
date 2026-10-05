@@ -341,6 +341,6 @@ if __name__ == '__main__':
     try:
         main()
     except KeyboardInterrupt:
-        print('Cancelled; completed source archives remain resumable.', file=sys.stderr); sys.exit(130)
+        print('Cancelled; completed archives are saved. Run preparation again to continue.', file=sys.stderr); sys.exit(130)
     except (ValueError, OSError, KeyError) as error:
         print(str(error), file=sys.stderr); sys.exit(1)

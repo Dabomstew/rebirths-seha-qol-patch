@@ -21,10 +21,13 @@ struct Settings {
     fs::path assets;
 #include "prepare_feature_fields.inc"
     TransformProfile transformProfile = TransformProfile::Raw;
+    // Present when settings came from disk; empty hash means the INI was absent.
+    std::optional<std::string> configHash;
 };
 Game OpenGame(const fs::path& selected);
 std::vector<fs::path> DetectGames();
 Settings ReadSettings(const Game& game);
+void ApplySettings(const Game& game, const Settings& settings);
 void PrepareAndInstall(const Game& game, const Settings& settings, const Report& report = {},
                        const Cancel& cancel = {});
 void Rollback(const Game& game);

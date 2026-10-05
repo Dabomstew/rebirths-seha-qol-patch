@@ -78,8 +78,19 @@ void Failpoint(const char* point) {
 }
 } // namespace
 namespace install {
-void InstallPrepared(const Game& game, const Settings& settings, const fs::path& assets) {
+void Preflight(const Game& game, const Settings& settings) {
     CheckIdentity(game);
+    auto config = SafeBelow(game.directory, game.proxyDirectory / L"rebirths-patches.ini");
+    if (settings.configHash)
+        Need((fs::exists(config) ? Hash(config) : "") == *settings.configHash,
+             "Settings changed on disk; reload settings before applying");
+    ValidateProxy(SafeBelow(game.directory, game.proxyDirectory / L"X3DAudio1_7.dll"));
+    if (static_cast<GameId>(game.id) == GameId::Rebirth3)
+        Need(!fs::exists(game.directory / L"steam_api_original.dll"),
+             "Unsupported Re;Birth3 installation layout detected; contact the patch author");
+}
+void InstallPrepared(const Game& game, const Settings& settings, const fs::path& assets) {
+    Preflight(game, settings);
     auto proxyBytes = Resource(101);
     auto wanted = EmbeddedHash();
     auto proxy = game.proxyDirectory / L"X3DAudio1_7.dll",
@@ -90,6 +101,9 @@ void InstallPrepared(const Game& game, const Settings& settings, const fs::path&
     bool hadProxy = fs::exists(proxy), hadConfig = fs::exists(config),
          hadState = fs::exists(State(game));
     std::string oldProxy = hadProxy ? Hash(proxy) : "", oldConfig = hadConfig ? Hash(config) : "";
+    if (settings.configHash)
+        Need(oldConfig == *settings.configHash,
+             "Settings changed on disk; reload settings before applying");
     auto backup = Backups(game) / Stamp();
     SafeBelow(game.directory, backup);
     Need(!fs::exists(backup), "Preparation backup already exists");
@@ -143,10 +157,14 @@ void InstallPrepared(const Game& game, const Settings& settings, const fs::path&
         Set(manifest, L"Snapshot", L"PriorConfigHash", W(oldConfig));
         Set(manifest, L"Snapshot", L"InstalledConfigHash", W(configHash));
         CheckIdentity(game);
+        Need((fs::exists(config) ? Hash(config) : "") == oldConfig,
+             "Settings changed during installation; reload settings");
         Publish(dllStage, proxy);
         dllPublished = true;
         Need(Hash(proxy) == wanted, "Published proxy hash mismatch");
         Failpoint("after-proxy");
+        Need((fs::exists(config) ? Hash(config) : "") == oldConfig,
+             "Settings changed during installation; reload settings");
         Publish(iniStage, config);
         configPublished = true;
         Need(Hash(config) == configHash, "Published settings hash mismatch");

@@ -23,10 +23,10 @@ Game OpenGame(const fs::path& selected) {
             executable = path;
         }
     }
-    Need(found != nullptr, "Supported game executable not found");
+    Need(found != nullptr, "No supported game EXE found. Choose the folder containing the game EXE.");
     SafeBelow(root, executable);
     auto hash = rebirths::HashFile(executable.wstring());
-    Need(rebirths::IdentifyGame(hash) == found, "Unsupported game executable hash");
+    Need(rebirths::IdentifyGame(hash) == found, "This game EXE does not match a supported version. Leave it in place and report this message.");
     Game game{};
     game.id = static_cast<uint32_t>(found->id);
     game.directory = root;
@@ -74,12 +74,14 @@ std::vector<fs::path> DetectGames() {
     }
     return games;
 }
+void ApplySettings(const Game& game, const Settings& settings) {
+    Need(!settings.assets.empty() && settings.assets.is_absolute(),
+         "Choose a full folder path for prepared assets.");
+    install::InstallPrepared(game, settings, settings.assets.lexically_normal());
+}
 void PrepareAndInstall(const Game& game, const Settings& settings, const Report& report,
                        const Cancel& cancel) {
-    CheckIdentity(game);
-    if (static_cast<GameId>(game.id) == GameId::Rebirth3)
-        Need(!fs::exists(game.directory / L"steam_api_original.dll"),
-             "Unsupported Re;Birth3 installation layout detected; contact the patch author");
+    install::Preflight(game, settings);
     auto assets = fs::absolute(settings.assets).lexically_normal();
     RunAssets(game.directory, assets, game.id, report, cancel, settings.transformProfile);
     VerifyAssets(game.directory, assets, game.id, report, cancel, settings.transformProfile);

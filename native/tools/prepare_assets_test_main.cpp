@@ -8,7 +8,7 @@ int wmain(int argc,wchar_t** argv){
     try{
         if(argc!=5)throw std::runtime_error("usage: prepare-assets-test prepare|verify|prepare-cancel|prepare-ma123|verify-ma123|prepare-large-ma|verify-large-ma|prepare-adv-cg|verify-adv-cg game output game-id");
         unsigned prepared=0;
-        auto report=[&](const rebirths::prepare::Progress& p){if(p.stage==L"Preparing raw PAC")prepared++;
+        auto report=[&](const rebirths::prepare::Progress& p){if(p.stage==L"Preparing asset archive")prepared++;
             std::fwprintf(stderr,L"%ls %ls %llu/%llu\n",p.stage.c_str(),p.current.c_str(),p.completed,p.total);};
         auto action=std::wstring(argv[1]);auto cancel=[&]{return action==L"prepare-cancel"&&prepared>=2;};
         using rebirths::prepare::TransformProfile;

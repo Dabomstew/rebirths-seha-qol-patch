@@ -142,7 +142,7 @@ void AppendRows(const fs::path& root, const char* scope, const Source& s, uint32
             for (size_t i = cursor; i < end; i++) {
                 CheckCancel(cancel);
                 const Entry& e = *entries[i];
-                ReportAt(report, L"Preparing raw PAC", fs::path(s.path), i, s.entries.size());
+                ReportAt(report, L"Preparing asset archive", fs::path(s.path), i, s.entries.size());
                 Sha hash;
                 uint64_t size = 0;
                 const auto spec = SelectedHalf(s, e, game, profile);
