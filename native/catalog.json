@@ -1,0 +1,232 @@
+{
+  "version": 1,
+  "targets": [
+    {
+      "id": 0,
+      "enum": "Rebirth1",
+      "name": "rebirth1",
+      "executable": "NeptuniaReBirth1.exe",
+      "steam_folder": "Neptunia Rebirth1",
+      "local_record": "reports/rebirth1-local-install.json",
+      "hashes": {
+        "baseline": "0a6fdae55681019c9612f2da5e59c7539a2def22f66546695b8e9978ca88ab71",
+        "laa": "40d3439cbe97a4411dfb64beb04c5f65e06be1969fc9639afa7ec012918c2d53",
+        "ntcore": "02169eeb7219128cd238e93c58530577a83569d6376d030bf84acfdff2ff8941"
+      },
+      "image_base": 4194304,
+      "text_start": 4096,
+      "text_end": 3334656
+    },
+    {
+      "id": 1,
+      "enum": "Rebirth2",
+      "name": "rebirth2",
+      "executable": "NeptuniaReBirth2.exe",
+      "steam_folder": "Neptunia Rebirth2",
+      "local_record": "reports/rebirth2-local-install.json",
+      "hashes": {
+        "baseline": "f0b0b9fe40a26a001d0ac87702d51844f19900cfabe3d38680b885cc607c2fb2",
+        "laa": "987fdcf2840e8bbf94ce706746bcd3168b8b94e4984824262ebb7dfe69b3a156",
+        "ntcore": "8abd1b2272d198626853800f3b50cfaa580d2f797ec2b48dbef745b6c9950937"
+      },
+      "image_base": 4194304,
+      "text_start": 4096,
+      "text_end": 3387392
+    },
+    {
+      "id": 2,
+      "enum": "Rebirth3",
+      "name": "rebirth3",
+      "executable": "NeptuniaReBirth3.exe",
+      "steam_folder": "Hyperdimension Neptunia Re;Birth3",
+      "local_record": "reports/rebirth3-local-install.json",
+      "hashes": {
+        "baseline": "455ab306a0e44b6e97af1ce2f7c6cf3b56c0352aaa1d62d24fffc2b11088751b",
+        "laa": "41f988b3bcbeb6c5953b995ced27edb2f8fbc7d9c168203ad65c7c9213ecdd3d",
+        "ntcore": "b46751763f470a0d57eeaf590cb95d85118ebda6e0e86765a93a1e2280d79b01"
+      },
+      "image_base": 4194304,
+      "text_start": 4096,
+      "text_end": 3680256
+    },
+    {
+      "id": 3,
+      "enum": "SegaHardGirls",
+      "name": "neptune-vs-sega-hard-girls",
+      "executable": "Neptune VSSega Hard Girls.exe",
+      "steam_folder": "Superdimension Neptune VS Sega Hard Girls",
+      "local_record": "reports/sega-hard-girls-local-install.json",
+      "hashes": {
+        "baseline": "af9550b0b5ab90810e31274066f13b3e1b224ef5960951a44d2acd53903523e5",
+        "laa": "a3c1aab3713b569630361b5fae951da6987e38651ac1c378f3b6d5dc3d8f1a1b",
+        "ntcore": "d450aa5f92f6025634cbb81edbb59ad3713b07a2c920a3b123be584d47edc9c9"
+      },
+      "image_base": 4194304,
+      "text_start": 4096,
+      "text_end": 3430400
+    }
+  ],
+  "features": [
+    {
+      "key": "FastTextureConversion",
+      "member": "fastTextureConversion",
+      "support": [
+        "Rebirth1",
+        "Rebirth2",
+        "Rebirth3",
+        "SegaHardGirls"
+      ],
+      "runtime_default": 1,
+      "fresh_default": 1,
+      "existing_default": 1,
+      "preparer_policy": "managed",
+      "ui_label": "Fast texture conversion",
+      "comment": "Exact-output CPU texture conversion for all four supported games; default on."
+    },
+    {
+      "key": "FastFaceTextureCreation",
+      "member": null,
+      "support": [
+        "Rebirth3",
+        "SegaHardGirls"
+      ],
+      "runtime_default": 0,
+      "fresh_default": 0,
+      "existing_default": 0,
+      "preparer_policy": "preserve",
+      "ui_label": null,
+      "comment": "Re;Birth3/Sega: omit redundant GPU waits during native face-surface creation; opt-in."
+    },
+    {
+      "key": "AdvFastForward",
+      "member": "advFastForward",
+      "support": [
+        "Rebirth1",
+        "Rebirth2",
+        "Rebirth3",
+        "SegaHardGirls"
+      ],
+      "runtime_default": 0,
+      "fresh_default": 0,
+      "existing_default": 0,
+      "preparer_policy": "managed",
+      "ui_label": "ADV fast forward",
+      "comment": "Disabled by default. Enable only after the supported baseline is verified."
+    },
+    {
+      "key": "AdvAutoSkip",
+      "member": "advAutoSkip",
+      "support": [
+        "Rebirth1",
+        "Rebirth2",
+        "Rebirth3",
+        "SegaHardGirls"
+      ],
+      "runtime_default": 0,
+      "fresh_default": 0,
+      "existing_default": 0,
+      "preparer_policy": "managed",
+      "ui_label": "ADV auto skip",
+      "comment": "One normal native skip activation per eligible ADV event; default off."
+    },
+    {
+      "key": "SkipTutorials",
+      "member": "skipTutorials",
+      "support": [
+        "Rebirth1",
+        "Rebirth2",
+        "Rebirth3",
+        "SegaHardGirls"
+      ],
+      "runtime_default": 1,
+      "fresh_default": 1,
+      "existing_default": 1,
+      "preparer_policy": "managed",
+      "ui_label": "Skip tutorials",
+      "comment": "Automatic tutorials complete before Help loads; manually opened Help remains available."
+    },
+    {
+      "key": "BattleLoadDelaySkip",
+      "member": "battleLoadDelaySkip",
+      "support": [
+        "Rebirth3"
+      ],
+      "runtime_default": 0,
+      "fresh_default": 0,
+      "existing_default": 0,
+      "preparer_policy": "managed",
+      "ui_label": "Battle load delay skip",
+      "comment": "Re;Birth3 only: reduce the post-readiness battle character wait from 21 frames to one."
+    },
+    {
+      "key": "SkipChapterIntros",
+      "member": "skipChapterIntros",
+      "support": [
+        "Rebirth2"
+      ],
+      "runtime_default": 0,
+      "fresh_default": 0,
+      "existing_default": 0,
+      "preparer_policy": "managed",
+      "ui_label": "Skip chapter intros",
+      "comment": "Re;Birth2 only: omit chapter title and N-GEAR presentations; independent of ADV skip."
+    },
+    {
+      "key": "DungeonMovementFix",
+      "member": "dungeonMovementFix",
+      "support": [
+        "SegaHardGirls"
+      ],
+      "runtime_default": 1,
+      "fresh_default": 1,
+      "existing_default": 1,
+      "preparer_policy": "managed",
+      "ui_label": "Dungeon movement fix",
+      "comment": "Sega Hard Girls only: correct the extra dungeon movement step when clock time is below one step."
+    },
+    {
+      "key": "UncompressedAssets",
+      "member": "uncompressedAssets",
+      "support": [
+        "Rebirth1",
+        "Rebirth2",
+        "Rebirth3",
+        "SegaHardGirls"
+      ],
+      "runtime_default": 0,
+      "fresh_default": 1,
+      "existing_default": 0,
+      "preparer_policy": "managed",
+      "ui_label": "Use prepared assets",
+      "comment": "Prepared assets are optional; original loading remains the fallback."
+    },
+    {
+      "key": "NepstationSkip",
+      "member": "nepstationSkip",
+      "support": [
+        "Rebirth3"
+      ],
+      "runtime_default": 0,
+      "fresh_default": 0,
+      "existing_default": 0,
+      "preparer_policy": "managed",
+      "ui_label": "Skip Nepstation",
+      "comment": "Re;Birth3 only: fully skip Nepstation using native cleanup; independent of ADV auto skip, default off."
+    },
+    {
+      "key": "TrimSilentAudioTails",
+      "member": null,
+      "support": [
+        "Rebirth1",
+        "Rebirth2",
+        "Rebirth3"
+      ],
+      "runtime_default": 1,
+      "fresh_default": 1,
+      "existing_default": 1,
+      "preparer_policy": "preserve",
+      "ui_label": null,
+      "comment": "Re;Birth1 JP/EN and Re;Birth2 JP voices: trim qualified quiet ADPCM tails; Re;Birth2/3 effects: trim digital-silent xWMA packets. Private metadata only; default on."
+    }
+  ]
+}

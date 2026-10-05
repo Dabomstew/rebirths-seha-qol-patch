@@ -1,0 +1,6 @@
+native\src\rebirths_identity.cpp
+native\src\prepare_install_support.cpp
+native\src\prepare_config.cpp
+native\src\prepare_install.cpp
+native\src\prepare_executable.cpp
+native\src\prepare_game.cpp

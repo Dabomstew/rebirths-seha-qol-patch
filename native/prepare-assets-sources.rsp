@@ -1,0 +1,9 @@
+native\src\asset_huffman.cpp
+native\src\asset_store.cpp
+native\src\prepare_json.cpp
+native\src\prepare_asset_io.cpp
+native\src\prepare_asset_archive.cpp
+native\src\prepare_asset_transform.cpp
+native\src\prepare_asset_publish.cpp
+native\src\prepare_asset_owner.cpp
+native\src\prepare_assets_native.cpp

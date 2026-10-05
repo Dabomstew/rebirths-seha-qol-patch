@@ -1,0 +1,176 @@
+{
+  "project": "rebirths-speedrun-patch",
+  "proxy": "build/prepare/proxy/X3DAudio1_7.dll",
+  "preparer": "build/prepare/Rebirths-Preparer.exe",
+  "configuration": "native/rebirths-patches.ini",
+  "proxy_command": [
+    "powershell.exe",
+    "-NoProfile",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-File",
+    "native/build-proxy.ps1",
+    "-Variant",
+    "preparer"
+  ],
+  "prepare_command": [
+    "native/build-prepare-game.cmd"
+  ],
+  "architectures": {
+    "proxy": "x86",
+    "preparer": "x64"
+  },
+  "test_commands": [
+    [
+      "native/test-adv-operations.cmd"
+    ],
+    [
+      "native/test-audio-tail.cmd"
+    ],
+    [
+      "native/test-call-transaction.cmd"
+    ],
+    [
+      "native/test-catalog-contract.cmd"
+    ],
+    [
+      "native/test-face-textures.cmd"
+    ],
+    [
+      "native/test-owned-patch-install.cmd"
+    ],
+    [
+      "native/test-platform-util.cmd"
+    ],
+    [
+      "native/test-rebirth1-adv-auto-skip.cmd"
+    ],
+    [
+      "native/test-rebirth1-adv-blackout.cmd"
+    ],
+    [
+      "native/test-rebirth1-adv-fast-forward.cmd"
+    ],
+    [
+      "native/test-rebirth1-adv-visual-speed.cmd"
+    ],
+    [
+      "native/test-rebirth2-adv-auto-skip.cmd"
+    ],
+    [
+      "native/test-rebirth2-adv-fast-forward.cmd"
+    ],
+    [
+      "native/test-rebirth3-adv-auto-skip.cmd"
+    ],
+    [
+      "native/test-rebirth3-adv-fast-forward.cmd"
+    ],
+    [
+      "native/test-rebirth3-battle-delay.cmd"
+    ],
+    [
+      "native/test-sega-adv-auto-skip.cmd"
+    ],
+    [
+      "native/test-sega-adv-fast-forward.cmd"
+    ],
+    [
+      "native/test-target-identity.cmd"
+    ],
+    [
+      "native/test-texture-hook-recovery.cmd"
+    ],
+    [
+      "native/test-thread-freeze.cmd"
+    ],
+    [
+      "native/test-tutorial-skip.cmd"
+    ],
+    [
+      "native/test-voice-tail.cmd"
+    ],
+    [
+      "native/build-prepare-assets-test.cmd"
+    ],
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "native/tests",
+      "-p",
+      "test_prepare_assets*.py"
+    ],
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "native/tests",
+      "-p",
+      "test_catalog.py"
+    ],
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "native/tests",
+      "-p",
+      "test_shipped_config.py"
+    ]
+  ],
+  "package_files": [
+    {
+      "source": "build/prepare/Rebirths-Preparer.exe",
+      "target": "Rebirths-Preparer.exe"
+    },
+    {
+      "source": "README.md",
+      "target": "README.md"
+    },
+    {
+      "source": "LICENSE",
+      "target": "LICENSE"
+    },
+    {
+      "source": "THIRD-PARTY-NOTICES.md",
+      "target": "THIRD-PARTY-NOTICES.md"
+    },
+    {
+      "source": "docs/BUILD.md",
+      "target": "docs/BUILD.md"
+    },
+    {
+      "source": "docs/QUICK-START.md",
+      "target": "docs/QUICK-START.md"
+    },
+    {
+      "source": "docs/USER-GUIDE.md",
+      "target": "docs/USER-GUIDE.md"
+    },
+    {
+      "source": "docs/TESTING.md",
+      "target": "docs/TESTING.md"
+    },
+    {
+      "source": "docs/ASSETS.md",
+      "target": "docs/ASSETS.md"
+    },
+    {
+      "source": "docs/CATALOG-REFERENCE.md",
+      "target": "docs/CATALOG-REFERENCE.md"
+    }
+  ],
+  "machines": {
+    "Rebirths-Preparer.exe": 34404
+  },
+  "artifacts": [
+    "build/prepare/proxy/X3DAudio1_7.dll",
+    "build/prepare/Rebirths-Preparer.exe"
+  ]
+}
