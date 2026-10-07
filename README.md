@@ -1,6 +1,6 @@
 # Rebirths / Sega Hard Girls QoL Patch
 
-Version **0.2.1**.
+Version **0.2.2**.
 
 A Windows patch and preparer for **Hyperdimension Neptunia
 Re;Birth1, Re;Birth2, Re;Birth3**, and **Superdimension Neptune VS Sega Hard Girls**.

@@ -43,3 +43,7 @@ records exact source hashes. Its synthetic `session_test.cpp` can be compiled
 with `preparer.cpp` using C++17 and the static runtime; it uses fictional games
 and fake launchers. Backend integration fixtures require local copied baselines
 and must never launch a game or modify an installed executable.
+
+The preparer embeds its common-controls v6 activation manifest. Release builds
+and packages verify resource 24/1 and standalone GUI startup from an empty
+folder. This check does not install or prepare a game.
