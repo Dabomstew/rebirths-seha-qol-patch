@@ -1,5 +1,6 @@
 """Compare compiled planner profiles to independently hashed local baselines."""
 import hashlib
+import os
 from pathlib import Path
 from compiled_profiles import profiles
 from pe_image import PeImage
@@ -27,7 +28,7 @@ def main():
     }
     for game,(call,start,planner,busy) in expected.items():
         filename,digest=BASELINES[game]
-        image=(root/'binaries'/game/filename).read_bytes()
+        image=(Path(os.environ['PATCH_BASELINE_DIR'])/game/filename).read_bytes()
         assert hashlib.sha256(image).hexdigest()==digest
         pe=PeImage(image);p=profiles()[game]['enemy_turn']
         assert (p['call'],p['start'],p['planner'],p['busy'])==(call,start,planner,busy)
