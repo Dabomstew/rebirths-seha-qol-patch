@@ -15,6 +15,7 @@ enum class FeatureId {
     UncompressedAssets,
     NepstationSkip,
     TrimSilentAudioTails,
+    EnemyTurnSoftlockFix,
 };
 enum class PreparerPolicy { Managed, Preserve };
 struct FeatureSpec {
@@ -22,7 +23,7 @@ struct FeatureSpec {
     int runtimeDefault, freshDefault, existingDefault;
     PreparerPolicy preparerPolicy; const wchar_t* uiLabel;
 };
-inline constexpr std::array<FeatureSpec, 11> Features = {{
+inline constexpr std::array<FeatureSpec, 12> Features = {{
     {FeatureId::FastTextureConversion, L"FastTextureConversion", 15, 1, 1, 1, PreparerPolicy::Managed, L"Fast texture conversion"},
     {FeatureId::FastFaceTextureCreation, L"FastFaceTextureCreation", 12, 0, 0, 0, PreparerPolicy::Preserve, nullptr},
     {FeatureId::AdvFastForward, L"AdvFastForward", 15, 0, 0, 0, PreparerPolicy::Managed, L"Story fast-forward (ADV)"},
@@ -34,6 +35,7 @@ inline constexpr std::array<FeatureSpec, 11> Features = {{
     {FeatureId::UncompressedAssets, L"UncompressedAssets", 15, 0, 1, 0, PreparerPolicy::Managed, L"Use prepared assets"},
     {FeatureId::NepstationSkip, L"NepstationSkip", 4, 0, 0, 0, PreparerPolicy::Managed, L"Skip Nepstation"},
     {FeatureId::TrimSilentAudioTails, L"TrimSilentAudioTails", 7, 1, 1, 1, PreparerPolicy::Preserve, nullptr},
+    {FeatureId::EnemyTurnSoftlockFix, L"EnemyTurnSoftlockFix", 15, 1, 1, 1, PreparerPolicy::Preserve, nullptr},
 }};
 constexpr const FeatureSpec& FeatureSpecFor(FeatureId id) {
     for (const auto& feature : Features) if (feature.id == id) return feature;

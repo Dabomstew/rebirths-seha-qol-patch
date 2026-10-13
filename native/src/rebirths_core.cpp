@@ -10,6 +10,7 @@
 #include "fast_texture_conversion.hpp"
 #include "fast_face_texture_creation.hpp"
 #include "tutorial_skip.hpp"
+#include "enemy_turn_softlock.hpp"
 #include "rebirth3_adv_auto_skip.hpp"
 #include <cstdarg>
 #include <cstdio>
@@ -80,6 +81,8 @@ void Initialize(HMODULE proxy) noexcept {
         };
         if (enabled(FeatureId::UncompressedAssets)) InstallUncompressedAssets(context);
         else Log("UncompressedAssets disabled");
+        if (enabled(FeatureId::EnemyTurnSoftlockFix)) InstallEnemyTurnSoftlockFix(context);
+        else Log("EnemyTurnSoftlockFix disabled");
         if (enabled(FeatureId::FastTextureConversion))
             InstallFastTextureConversion(context);
         else Log("FastTextureConversion disabled or unsupported");

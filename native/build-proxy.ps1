@@ -48,7 +48,7 @@ foreach ($line in $environment) {
 # One inventory in the established compilation order. The three foundation
 # objects have always linked last; preserve that separate ordering constraint.
 $units = @(
-    'asset_store', 'asset_entry', 'uncompressed_assets', 'tutorial_skip',
+    'asset_store', 'asset_entry', 'uncompressed_assets', 'tutorial_skip', 'enemy_turn_softlock',
     'rebirths_core', 'rebirths_identity', 'call_patch', 'audio_tail', 'voice_tail',
     'adv_blackout', 'rebirth1_adv_fast_forward',
     'rebirth2_adv_fast_forward', 'rebirth3_adv_fast_forward', 'rebirth3_battle_delay',

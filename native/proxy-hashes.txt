@@ -55,3 +55,6 @@ bb78ec6706cd17fe5eea479f947781ba22247cab38946dc5446ba794c9bc7314 | recognized le
 f4941ec3fcf44a164bab6e1fdb9aa80bf6943f1aec90a986e883710589533d55 | recognized legacy proxy 55
 b506b808e328c37db9481712fef6807fe6a75c6f19ab17b384bef8dfafc866f9 | Production 0.2.0 reviewed release
 e832e22442123eb6e3ff10a241ecce5126661d959d7c86eba062c0bbade47763 | Production 0.2.1 reviewed release
+d440c321a2e04c8c531f19e85ff296afdd2a7cab35eba0ee0995c3e339e3b035 | Production 0.2.2 reviewed release
+6d199e3b30dd70d4b752faad12d3b42cf1f1a59fd0ae21f1ccb42ae2fde124ca | Default-on enemy-turn completion-race fix; four-game forced-window and normal battle qualification
+14f3f6fd9fbd7798bb688fe6acabaf364b5a24546187482673abfc8dbbeef3ab | Owned battle-worker retry and cooperative cancellation; four-game normal, forced-window and native teardown qualification

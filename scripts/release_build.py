@@ -2,6 +2,7 @@
 import argparse
 import ctypes
 from ctypes import wintypes
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
@@ -48,6 +49,66 @@ def machine(data):
     offset = int.from_bytes(data[60:64], 'little')
     need(data[offset:offset + 4] == b'PE\0\0', 'Missing PE signature')
     return int.from_bytes(data[offset + 4:offset + 6], 'little')
+
+
+def package_target(configuration, source):
+    matches = [entry['target'] for entry in configuration['package_files'] if entry['source'] == source]
+    need(len(matches) == 1, f'Expected one package target for {source}')
+    return matches[0]
+
+
+def package_contract(configuration):
+    """Explicit new-consumer contracts; retain only the three historical defaults."""
+    legacy = {'vii-speedrun-patch': 'native/proxy.def',
+              'rebirths-speedrun-patch': 'native/x3daudio_proxy.def',
+              'omega-quintet-patch': 'native/x3daudio_proxy.def'}
+    contract = configuration.get('package_contract')
+    if contract is None:
+        need(configuration['project'] in legacy, 'New consumer requires explicit package_contract')
+        contract = {'proxy_definition': legacy[configuration['project']],
+                    'proxy_registry': 'native/proxy-hashes.txt',
+                    'preparer_resources': {'proxy': 101, 'registry': 102, 'configuration': 103},
+                    'excluded_patterns': [r'save[\s_-]*anywhere']}
+    need(isinstance(contract, dict), 'package_contract must be an object')
+    need(not set(contract) - {'proxy_definition', 'proxy_registry', 'preparer_resources', 'excluded_patterns'},
+         'Unknown package_contract key')
+    for key in ['proxy_definition'] + (['proxy_registry'] if configuration.get('preparer') else []):
+        value = contract.get(key)
+        need(isinstance(value, str) and value and not PurePosixPath(value).is_absolute() and
+             '..' not in PurePosixPath(value).parts and '\\' not in value and ':' not in value,
+             f'Unsafe/missing package_contract {key}')
+    if configuration.get('preparer'):
+        resources = contract.get('preparer_resources')
+        need(isinstance(resources, dict) and set(resources) == {'proxy', 'registry', 'configuration'},
+             'Declare proxy/registry/configuration preparer resource IDs')
+        need(all(type(value) is int and 1 <= value <= 65535 for value in resources.values()) and
+             len(set(resources.values())) == 3, 'Invalid/duplicate preparer resource IDs')
+    patterns = contract.get('excluded_patterns', [])
+    need(isinstance(patterns, list) and all(isinstance(p, str) and p for p in patterns),
+         'excluded_patterns must be nonempty regex strings')
+    for pattern in patterns:
+        try: re.compile(pattern.encode('utf-8'), re.I)
+        except re.error as error: raise RuntimeError('Invalid excluded pattern') from error
+    target = package_target(configuration, configuration['proxy'])
+    declared = configuration['machines'].get(target)
+    need(type(declared) is int and declared in (0x14c, 0x8664), 'Declare proxy target machine as x86 or x64')
+    return dict(contract, proxy_target=target, proxy_machine=declared)
+
+
+def contract_path(root, relative):
+    path = root / relative
+    need(path.resolve().is_relative_to(root.resolve()), 'Package contract path leaves repository')
+    return path
+
+
+def verify_embedded(configuration, root=None):
+    root = ROOT if root is None else Path(root)
+    contract = package_contract(configuration)
+    ids = contract['preparer_resources']
+    preparer = root / configuration['preparer']
+    need(resource(preparer, ids['proxy']) == (root / configuration['proxy']).read_bytes(), 'Embedded proxy mismatch')
+    need(resource(preparer, ids['registry']) == (root / 'build/generated/proxy-hashes.txt').read_bytes(), 'Embedded registry mismatch')
+    need(resource(preparer, ids['configuration']) == (root / configuration['configuration']).read_bytes(), 'Embedded settings mismatch')
 
 
 def resource(path, number, kind=10):
@@ -145,6 +206,7 @@ def execute(command, environment):
 def build(configuration, tests, visual_studio):
     need(os.name == 'nt', 'Native builds require Windows')
     need(not git('status', '--porcelain'), 'Commit all source and instructions before building')
+    contract = package_contract(configuration)
     generated = ROOT / 'build/generated'
     generated.mkdir(parents=True, exist_ok=True)
     release = version()
@@ -179,23 +241,22 @@ END
     environment = os.environ.copy()
     if visual_studio: environment['PATCH_VISUAL_STUDIO'] = visual_studio
     # Resource compilation has no path interpolation supplied by callers.
-    subprocess.run([os.environ['ComSpec'], '/d', '/c', 'call scripts\\init-msvc.cmd x86 && rc /nologo /fo build\\generated\\proxy-version.res build\\generated\\proxy-version.rc'], cwd=ROOT, env=environment, check=True)
+    resource_architecture = 'x86' if contract['proxy_machine'] == 0x14c else 'x64'
+    subprocess.run([os.environ['ComSpec'], '/d', '/c', 'call scripts\\init-msvc.cmd ' + resource_architecture + ' && rc /nologo /fo build\\generated\\proxy-version.res build\\generated\\proxy-version.rc'], cwd=ROOT, env=environment, check=True)
     proxy_command = configuration['proxy_command'][:]
     if tests and configuration.get('proxy_tests'): proxy_command += configuration['proxy_tests']
     if visual_studio and proxy_command[0] == 'powershell.exe': proxy_command += ['-VisualStudioDirectory', visual_studio]
     execute(proxy_command, environment)
     proxy = ROOT / configuration['proxy']
-    need(machine(proxy.read_bytes()) == 0x14c, 'Release proxy must be x86')
+    need(machine(proxy.read_bytes()) == contract['proxy_machine'], 'Release proxy machine mismatch')
     if configuration.get('preparer'):
-        hashes = (ROOT / 'native/proxy-hashes.txt').read_text(encoding='ascii').splitlines()
+        hashes = contract_path(ROOT, contract['proxy_registry']).read_text(encoding='ascii').splitlines()
         rows = [line for line in hashes if line and not line.startswith('#')]
         proxy_hash = digest(proxy.read_bytes())
         if proxy_hash not in [line.split(' | ')[0] for line in rows]: rows.append(proxy_hash + ' | release ' + release)
         (generated / 'proxy-hashes.txt').write_text('\n'.join(rows) + '\n', encoding='ascii')
         execute(configuration['prepare_command'], environment)
-        need(resource(ROOT / configuration['preparer'], 101) == proxy.read_bytes(), 'Embedded proxy differs from release DLL')
-        need(resource(ROOT / configuration['preparer'], 102) == (generated / 'proxy-hashes.txt').read_bytes(), 'Embedded recognition registry mismatch')
-        need(resource(ROOT / configuration['preparer'], 103) == (ROOT / configuration['configuration']).read_bytes(), 'Embedded settings mismatch')
+        verify_embedded(configuration)
         for entry in preparer_entries(configuration): verify_preparer(ROOT / entry['source'])
     if tests:
         for command in configuration.get('test_commands', []): execute(command, environment)
@@ -216,13 +277,23 @@ def check_links(files):
             need(target in files, f'Packaged link target missing: {name} -> {link}')
 
 
+def zip_timestamp(revision):
+    """Use the production commit time, independent of checkout and local timezone."""
+    timestamp = datetime.fromtimestamp(int(git('show', '-s', '--format=%ct', revision)), timezone.utc)
+    need(1980 <= timestamp.year <= 2107, 'Production commit timestamp is outside ZIP date range')
+    return (timestamp.year, timestamp.month, timestamp.day,
+            timestamp.hour, timestamp.minute, timestamp.second // 2 * 2)
+
+
 def package(configuration):
     need(not git('status', '--porcelain'), 'Package only clean committed source')
+    if configuration.get('proxy'): package_contract(configuration)
     need(git('branch', '--show-current') == 'production', 'Package only production')
     identity = json.loads((ROOT / 'build/release-identity.json').read_text())
     need(identity['version'] == version() and identity['source_revision'] == git('rev-parse', 'HEAD'), 'Rebuild current committed version')
     need(identity['sources'] == inputs(), 'Build source set changed')
     need(identity['synthetic_tests_passed'], 'Run build-release.ps1 -Tests before packaging')
+    timestamp = zip_timestamp(identity['source_revision'])
     for path, expected in identity['artifacts'].items():
         need(digest((ROOT / path).read_bytes()) == expected, f'Build artifact changed: {path}')
     payload = {}
@@ -233,9 +304,7 @@ def package(configuration):
         payload[name] = (ROOT / path).read_bytes()
     for name, expected in configuration['machines'].items(): need(machine(payload[name]) == expected, f'Wrong machine: {name}')
     if configuration.get('preparer'):
-        need(resource(ROOT / configuration['preparer'], 101) == (ROOT / configuration['proxy']).read_bytes(), 'Embedded proxy mismatch')
-        need(resource(ROOT / configuration['preparer'], 102) == (ROOT / 'build/generated/proxy-hashes.txt').read_bytes(), 'Embedded registry mismatch')
-        need(resource(ROOT / configuration['preparer'], 103) == (ROOT / configuration['configuration']).read_bytes(), 'Embedded settings mismatch')
+        verify_embedded(configuration)
     manifest = {'project': configuration['project'], 'version': version(), 'source_revision': identity['source_revision'], 'architectures': configuration['architectures'], 'files': {p: {'sha256': digest(d), 'bytes': len(d)} for p, d in payload.items()}}
     payload['manifest.json'] = (json.dumps(manifest, indent=2) + '\n').encode('utf-8')
     payload['SHA256SUMS.txt'] = ''.join(f'{digest(d)}  {p}\n' for p, d in sorted(payload.items())).encode('ascii')
@@ -248,10 +317,11 @@ def package(configuration):
         target = directory / path; target.parent.mkdir(parents=True, exist_ok=True); target.write_bytes(data)
     with zipfile.ZipFile(archive, 'x', compression=zipfile.ZIP_DEFLATED) as output:
         for path, data in sorted(payload.items()):
-            entry = zipfile.ZipInfo(path, (2026, 1, 1, 0, 0, 0)); entry.compress_type = zipfile.ZIP_DEFLATED
+            entry = zipfile.ZipInfo(path, timestamp); entry.compress_type = zipfile.ZIP_DEFLATED
             output.writestr(entry, data)
     with zipfile.ZipFile(archive) as output:
         need(sorted(output.namelist()) == sorted(payload), 'ZIP allowlist mismatch')
+        need(all(entry.date_time == timestamp for entry in output.infolist()), 'ZIP timestamp mismatch')
         for path, data in payload.items(): need(output.read(path) == data, f'ZIP byte mismatch: {path}')
         for entry in preparer_entries(configuration):
             with tempfile.TemporaryDirectory(prefix='packaged-preparer-') as folder:

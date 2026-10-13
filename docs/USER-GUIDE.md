@@ -27,7 +27,7 @@ maintenance finish before the window closes. Closing also cancels any pending ga
 
 ## Games and asset location
 
-This app prepares game assets and installs the patch for Re;Birth1, Re;Birth2, Re;Birth3, or Neptune VS Sega Hard Girls. It requires 64-bit Windows. Select a detected Steam installation, or click **Game folder...** and choose the folder containing the game EXE. The preparer checks that your game version is supported before making changes. It leaves the original game archives intact.
+This app prepares game assets and installs the patch for Re;Birth1, Re;Birth2, Re;Birth3, or Neptune VS Sega Hard Girls. Select a detected Steam installation, or click **Game folder...** and choose the folder containing the game EXE. The preparer checks that your game version is supported before making changes. It leaves the original game archives intact.
 
 For Re;Birth2, the preparer recognizes both known versions of `GAME00001.pac`, including the version with the repaired help texture. It refuses an unknown source version before installing anything.
 
@@ -36,6 +36,15 @@ The game and output folders can be reached through linked parent folders, such a
 New installations put prepared assets under `<game>\rebirths-speedrun-patch\cg24-v1` by default. You can choose another location, including another drive. Existing installations keep their selected asset directory and profile. Installed DLC is included automatically. Running **Prepare / Resume** again checks existing output and rebuilds files that are missing or have changed. Do not put the output inside the game's `data` or `DLC` folders.
 
 ## Settings
+
+An enemy-turn freeze fix is enabled by default in all four games. It prevents
+battle planning from leaving the game waiting after the calculation finishes,
+retries failed worker creation, and safely finishes or cancels work during battle
+cleanup. It keeps the game's planned actions and normal battle speed. There is
+no preparer checkbox. Set `EnemyTurnSoftlockFix=0` under `[Patches]` in the
+installed `rebirths-patches.ini` to disable it, then restart the game. Updates
+keep your explicit choice. See [Patch configuration](CONFIGURATION.md) for
+setting values, file locations and activation checks.
 
 Audio tail trimming starts on in Re;Birth1, Re;Birth2 and Re;Birth3, including
 updates where the setting is missing. It shortens checked, near-silent endings

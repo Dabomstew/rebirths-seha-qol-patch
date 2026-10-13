@@ -11,6 +11,7 @@ from shipped_config import check_feature_defaults, parse_config, read_config
 
 EXPECTED_CONFIG = {
     "Patches": {
+        "EnemyTurnSoftlockFix": "1",
         "TrimSilentAudioTails": "1",
         "FastTextureConversion": "1",
         "FastFaceTextureCreation": "0",

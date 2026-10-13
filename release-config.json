@@ -34,6 +34,9 @@
       "native/test-call-transaction.cmd"
     ],
     [
+      "native/test-enemy-turn-softlock.cmd"
+    ],
+    [
       "native/test-catalog-contract.cmd"
     ],
     [
@@ -173,13 +176,36 @@
     {
       "source": "docs/CATALOG-REFERENCE.md",
       "target": "docs/CATALOG-REFERENCE.md"
+    },
+    {
+      "source": "build/prepare/proxy/X3DAudio1_7.dll",
+      "target": "payload/X3DAudio1_7.dll"
+    },
+    {
+      "source": "native/rebirths-patches.ini",
+      "target": "payload/rebirths-patches.ini"
+    },
+    {
+      "source": "docs/CONFIGURATION.md",
+      "target": "docs/CONFIGURATION.md"
     }
   ],
   "machines": {
-    "Rebirths-Preparer.exe": 34404
+    "Rebirths-Preparer.exe": 34404,
+    "payload/X3DAudio1_7.dll": 332
   },
   "artifacts": [
     "build/prepare/proxy/X3DAudio1_7.dll",
     "build/prepare/Rebirths-Preparer.exe"
-  ]
+  ],
+  "package_contract": {
+    "proxy_definition": "native/x3daudio_proxy.def",
+    "proxy_registry": "native/proxy-hashes.txt",
+    "preparer_resources": {
+      "proxy": 101,
+      "registry": 102,
+      "configuration": 103
+    },
+    "excluded_patterns": []
+  }
 }

@@ -17,3 +17,4 @@ The shipped defaults apply when using the DLL directly; new installs use the pre
 | `UncompressedAssets` | Rebirth1, Rebirth2, Rebirth3, SegaHardGirls | 0 | 1 | 0 | Load and save your choice on supported games |
 | `NepstationSkip` | Rebirth3 | 0 | 0 | 0 | Load and save your choice on supported games |
 | `TrimSilentAudioTails` | Rebirth1, Rebirth2, Rebirth3 | 1 | 1 | 1 | Keep the saved value; edit in INI |
+| `EnemyTurnSoftlockFix` | Rebirth1, Rebirth2, Rebirth3, SegaHardGirls | 1 | 1 | 1 | Keep the saved value; edit in INI |

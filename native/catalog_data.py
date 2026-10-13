@@ -151,6 +151,16 @@ FEATURE_CATALOG = [{'key': 'FastTextureConversion',
   'ui_label': None,
   'comment': 'Trim checked quiet voice endings in Re;Birth1 JP/EN and Re;Birth2 JP, and silent '
              'sound-effect endings in Re;Birth2/3. Original audio files stay intact; on by '
+             'default.'},
+ {'key': 'EnemyTurnSoftlockFix',
+  'member': None,
+  'support': ['Rebirth1', 'Rebirth2', 'Rebirth3', 'SegaHardGirls'],
+  'runtime_default': 1,
+  'fresh_default': 1,
+  'existing_default': 1,
+  'preparer_policy': 'preserve',
+  'ui_label': None,
+  'comment': 'Prevent an enemy-turn freeze caused by battle planning finishing early; on by '
              'default.'}]
 TARGETS = [(t['name'], t['executable'], t['hashes']['baseline']) for t in TARGET_CATALOG]
 def target_for_id(game):

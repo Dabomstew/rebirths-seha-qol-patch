@@ -1,13 +1,14 @@
 # Rebirths / Sega Hard Girls QoL Patch
 
-Version **0.2.2**.
+Version **0.2.3**.
 
 A Windows patch and preparer for **Hyperdimension Neptunia
 Re;Birth1, Re;Birth2, Re;Birth3**, and **Superdimension Neptune VS Sega Hard Girls**.
 
 Prepare game assets ahead of time for faster loading and speed up texture
 conversion. The patch also offers tutorial skipping, shorter quiet or silent
-audio endings, and optional story-scene speedups. Available features vary by game.
+audio endings, and optional story-scene speedups. Available features vary by game. A default-on enemy-turn freeze fix in all four
+games keeps battle planning from leaving the game waiting after it finishes.
 
 ## Installation and configuration
 
@@ -20,9 +21,8 @@ audio endings, and optional story-scene speedups. Available features vary by gam
 assets. **Play** does the same before starting the game. Assets without prepared
 copies use the original archives; use **Prepare / Resume** to build them.
 
-You need 64-bit Windows. The preparer includes the patch DLL and its runtime;
-no Python or compiler is needed to install it. It accepts supported original
-game EXEs and supported versions with the 4GB patch. See the
+You need Windows and a supported installation of the game. The preparer accepts
+supported original game EXEs and supported versions with the 4GB patch. See the
 [User Guide](docs/USER-GUIDE.md) for supported versions and features, disk space,
 updates, rollback and removal.
 
@@ -30,7 +30,9 @@ New installations enable prepared assets, fast texture conversion, tutorial
 skipping, and smaller versions of selected large story illustrations. Audio tail
 trimming starts on in the three Re;Birth games; Sega's movement fix starts on.
 Story fast-forward and story auto-skip start off. Updates keep your saved settings
-and asset profile. Other optional features use the defaults listed in the guide.
+and asset profile. The enemy-turn fix also starts on when its setting is missing;
+see [Patch configuration](docs/CONFIGURATION.md) to disable it. Other optional
+features use the defaults listed in the guide.
 
 If the preparer finds a patch DLL it doesn't recognize, it stops without replacing
 it. For the usual Re;Birth3 folder, a Windows path-search bug requires the patch

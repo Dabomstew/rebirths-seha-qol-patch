@@ -17,9 +17,8 @@ Existing release outputs are never overwritten.
 
 The release version comes from `VERSION`. Generated C++ constants, Windows
 version resources, package names and manifests use that value. Each project
-has its own release number: patch for compatible fixes, minor for features or
-pre-1.0 breaking changes, and major for breaking changes after 1.0. Earlier
-deliveries were prereleases. ABI, asset-format and cache-schema versions are
+has its own release number. Releases normally advance the patch number unless
+a different version is selected. Earlier deliveries were prereleases. ABI, asset-format and cache-schema versions are
 tracked separately.
 
 Package only a clean production commit after building with `-Tests`. Packaging
@@ -47,3 +46,7 @@ and must never launch a game or modify an installed executable.
 The preparer embeds its common-controls v6 activation manifest. Release builds
 and packages verify resource 24/1 and standalone GUI startup from an empty
 folder. This check does not install or prepare a game.
+
+The `payload/` folder holds the same proxy DLL and default configuration embedded
+in the preparer. Release checks compare both copies byte-for-byte. Install with
+the preparer so game-specific paths and existing settings are handled correctly.

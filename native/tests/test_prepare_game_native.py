@@ -133,6 +133,33 @@ class PreparerFixture(unittest.TestCase):
                         self.run_app('rollback', game)
                         self.assertEqual(config.read_bytes(), before)
 
+    def test_enemy_turn_fix_is_default_on_and_preserved_without_a_control(self):
+        for index in range(4):
+            with self.subTest(game=index):
+                game, _ = self.fixture(index)
+                proxy_dir = game / 'Birth3' if index == 2 else game
+                proxy_dir.mkdir(exist_ok=True)
+                config = proxy_dir / 'rebirths-patches.ini'
+                self.run_app('prepare', game)
+                parsed = configparser.ConfigParser()
+                parsed.read(config, encoding='utf-8')
+                self.assertEqual(parsed.getint('Patches', 'EnemyTurnSoftlockFix'), 1)
+                for value in (None, 0, 1):
+                    before = b'[Patches]\r\nUncompressedAssets=0\r\n'
+                    if value is not None:
+                        before += f'EnemyTurnSoftlockFix={value}\r\n'.encode('ascii')
+                    before += b'[Personal]\r\nKeep=untouched\r\n'
+                    config.write_bytes(before)
+                    for action in ('prepare-features-on', 'prepare-features-off'):
+                        self.run_app(action, game)
+                        parsed = configparser.ConfigParser()
+                        parsed.read(config, encoding='utf-8')
+                        self.assertEqual(parsed.has_option('Patches', 'EnemyTurnSoftlockFix'), value is not None)
+                        self.assertEqual(parsed.getint('Patches', 'EnemyTurnSoftlockFix', fallback=1), 1 if value is None else value)
+                        self.assertEqual(parsed.get('Personal', 'Keep'), 'untouched')
+                        self.run_app('rollback', game)
+                        self.assertEqual(config.read_bytes(), before)
+
     def test_all_four_install_uninstall_and_semicolon(self):
         for index in range(4):
             with self.subTest(game=index):

@@ -18,5 +18,6 @@
         'UncompressedAssets' = '0'
         'NepstationSkip' = '0'
         'TrimSilentAudioTails' = '1'
+        'EnemyTurnSoftlockFix' = '1'
     }
 }
