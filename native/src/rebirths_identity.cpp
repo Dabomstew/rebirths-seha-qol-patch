@@ -4,10 +4,17 @@
 #include <array>
 #include <cstring>
 #include <fstream>
+#include <exception>
 #include <stdexcept>
 #include <vector>
 
 namespace rebirths {
+#ifdef REBIRTHS_TEST_CONTRACTS
+namespace testing {
+size_t identityHashCalls=0;
+bool failIdentityHash=false;
+}
+#endif
 
 const GameSpec* FindGameSpec(GameId id) noexcept {
     for (const auto& target : catalog::Targets)
@@ -43,6 +50,10 @@ std::wstring ModulePath(HMODULE module) {
 }
 
 Digest HashFile(const std::wstring& path) {
+#ifdef REBIRTHS_TEST_CONTRACTS
+    ++testing::identityHashCalls;
+    if(testing::failIdentityHash)throw std::runtime_error("Injected identity read failure");
+#endif
     std::ifstream input(path, std::ios::binary | std::ios::ate);
     if (!input) throw std::runtime_error("cannot open executable for identity check");
     const auto length = input.tellg();
@@ -55,6 +66,22 @@ Digest HashFile(const std::wstring& path) {
     rebirths::platform::Sha sha;
     sha.Add(bytes.data(), bytes.size());
     return sha.Finish();
+}
+
+const ExecutableIdentity& ProcessIdentity() {
+    struct Cached {
+        ExecutableIdentity identity{};
+        std::exception_ptr failure;
+        Cached() noexcept {
+            try {
+                identity.digest = HashFile(ModulePath(GetModuleHandleW(nullptr)));
+                identity.spec = IdentifyGame(identity.digest);
+            } catch (...) { failure = std::current_exception(); }
+        }
+    };
+    static const Cached cached;
+    if (cached.failure) std::rethrow_exception(cached.failure);
+    return cached.identity;
 }
 
 }

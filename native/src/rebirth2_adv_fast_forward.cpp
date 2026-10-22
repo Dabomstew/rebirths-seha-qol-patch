@@ -373,25 +373,9 @@ uint32_t __fastcall CgMotionPoll(uintptr_t object, void*) noexcept {
     return originalCgMotionPoll(object);
 }
 uintptr_t InfoHandle() noexcept {
-    const uintptr_t manager = *reinterpret_cast<const uintptr_t*>(gameBase + 0x4432c8);
-    // Inline AdvWndInfo record begins at manager+0x6c, not a pointer at +0x6c.
-    if (manager && *reinterpret_cast<const uintptr_t*>(manager) &&
-        (*reinterpret_cast<const uint32_t*>(manager + 0x27c) & 1)) {
-        const auto widget = *reinterpret_cast<const uintptr_t*>(manager + 0x70);
-        if (widget) return widget;
-    }
-    // Script-owned ADV_INFO records are separate from the inline manager
-    // record. Follow the same visible-widget list used by 0x00630890.
-    const auto windows = *reinterpret_cast<const uintptr_t*>(gameBase + 0x5cffdc);
-    if (!windows) return 0;
-    auto widget = *reinterpret_cast<const uintptr_t*>(windows + 0x59138);
-    for (size_t count = 0; widget && count < 4096; ++count) {
-        const auto name = reinterpret_cast<const char*>(widget + 0x70);
-        if (std::memcmp(name, "AdvWndInfo", sizeof("AdvWndInfo")) == 0 ||
-            std::memcmp(name, "AdvWndInfoMoney", sizeof("AdvWndInfoMoney")) == 0) return widget;
-        widget = *reinterpret_cast<const uintptr_t*>(widget + 0x10);
-    }
-    return 0;
+    // Independently validated visible-widget list used by 0x00630890.
+    constexpr adv_operations::InfoWidgetLayout layout{0x4432c8, 0x5cffdc, 0x59138, 0x70};
+    return adv_operations::InfoWidget(gameBase, layout);
 }
 
 constexpr uint32_t PresentationRva = 0x2e82a2, SwapIatRva = 0x33b04c;

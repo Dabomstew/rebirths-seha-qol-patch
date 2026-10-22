@@ -57,6 +57,71 @@ int main(){
         }
         Check(GetProcessHandleCount(GetCurrentProcess(),&after)&&before==after);
         failAllocate=failAppend=false;slots[0]->valid=slots[1]->valid=0;
+        // Deliberately different loose/prepared bytes prove selection order.
+        auto root=std::filesystem::path(path).wstring()+L" loose \u65e5\u672c";
+        std::filesystem::create_directories(std::filesystem::path(root)/L"data/GAME");
+        struct TreeCleanup {std::filesystem::path path;~TreeCleanup(){std::filesystem::remove_all(path);}} tree{root};
+        const auto loose=std::filesystem::path(root)/L"data/GAME/logical";
+        {
+            Handle h(CreateFileW(loose.c_str(),GENERIC_WRITE,0,nullptr,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,nullptr));
+            DWORD wrote=0;Check(WriteFile(h.value,"LOOSE!",6,&wrote,nullptr)&&wrote==6);
+        }
+        const auto looseRoot=std::filesystem::path(root);
+        auto read=[&](const char* expected,DWORD length){
+            char bytes[16]{};DWORD got=0;auto* e=slots[a];
+            Check(!e->compression&&e->size==length&&e->huffmanMetadata==nullptr&&e->decodedBlock==nullptr);
+            Check(SetFilePointer(e->handle,e->start,nullptr,FILE_BEGIN)==e->start);
+            Check(ReadFile(e->handle,bytes,sizeof(bytes),&got,nullptr)&&got==length&&!std::memcmp(bytes,expected,length));
+            Close(manager,a);
+        };
+        for(bool useLoose:{false,true})for(bool usePrepared:{false,true}){
+            unsigned errors=0;manager.error=42;a=99;
+            auto selected=OpenOverride(useLoose?&looseRoot:nullptr,usePrepared?&store:nullptr,
+                                      api,&manager,"logical",&a,false,dlc,errors);
+            Check(errors==0);
+            if(useLoose){Check(selected==Source::Loose);read("LOOSE!",6);}
+            else if(usePrepared){Check(selected==Source::Prepared);read("abc",3);}
+            else Check(selected==Source::Original&&a==99&&manager.error==42);
+        }
+        for(const char* name:{"/logical","\\logical",".\\logical","./logical","//logical"}){
+            Check(OpenLoose(looseRoot,api,&manager,name,&a));read("LOOSE!",6);
+        }
+        // Prepared Verify must never hash/compare a mod against original data.
+        unsigned modErrors=0;
+        Check(OpenOverride(&looseRoot,&store,api,&manager,"logical",&a,true,dlc,modErrors)==Source::Loose&&modErrors==0);read("LOOSE!",6);
+        // Loose additions need no original index record; retain the native raw lifetime.
+        failResolve=true;Check(OpenLoose(looseRoot,api,&manager,"logical",&a));read("LOOSE!",6);failResolve=false;
+        for(const char* name:{"../logical","sub/../logical","C:/logical","logical:stream","logical/","NUL","con.txt","logical.","logical "}){
+            unsigned errors=0;a=99;manager.error=42;
+            Check(OpenOverride(&looseRoot,nullptr,api,&manager,name,&a,false,dlc,errors)==Source::Original);
+            Check(errors==1&&a==99&&manager.error==42);
+        }
+        // Unopenable loose file falls through to prepared, then original if also absent.
+        {
+            Handle denied(CreateFileW(loose.c_str(),GENERIC_READ,0,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr));
+            unsigned errors=0;
+            Check(OpenOverride(&looseRoot,&store,api,&manager,"logical",&a,false,dlc,errors)==Source::Prepared&&errors==0);read("abc",3);
+        }
+        Check(DeleteFileW(loose.c_str())!=0);
+        unsigned errors=0;
+        Check(OpenOverride(&looseRoot,&store,api,&manager,"logical",&a,false,dlc,errors)==Source::Prepared&&errors==0);read("abc",3);
+        a=99;manager.error=42;
+        Check(OpenOverride(&looseRoot,nullptr,api,&manager,"logical",&a,false,dlc,errors)==Source::Original&&a==99&&manager.error==42);
+        // Zero length is a present loose file, not a fallback request.
+        {Handle empty(CreateFileW(loose.c_str(),GENERIC_WRITE,0,nullptr,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,nullptr));Check(bool(empty));}
+        Check(OpenLoose(looseRoot,api,&manager,"logical",&a));read("",0);
+        // Independent handles and reuse retain the same native allocation ownership.
+        Check(OpenLoose(looseRoot,api,&manager,"logical",&a));Check(OpenLoose(looseRoot,api,&manager,"logical",&b));
+        Check(slots[a]->handle!=slots[b]->handle);Close(manager,a);Close(manager,b);
+        slots[0]->valid=slots[1]->valid=1;
+        Check(GetProcessHandleCount(GetCurrentProcess(),&before)!=0);
+        for(int mode=0;mode<2;mode++){
+            failAllocate=mode==0;failAppend=mode==1;errors=0;a=99;manager.error=42;
+            Check(OpenOverride(&looseRoot,nullptr,api,&manager,"logical",&a,false,dlc,errors)==Source::Original);
+            Check(errors==1&&manager.error==42&&a==99);
+        }
+        Check(GetProcessHandleCount(GetCurrentProcess(),&after)&&before==after);
+        failAllocate=failAppend=false;slots[0]->valid=slots[1]->valid=0;
         for(auto p=manager.begin;p!=manager.end;++p)Delete(*p);
         Check(allocations==deletions);DeleteCriticalSection(&manager.lock);
         std::cout<<"Entry ABI, raw ranges, independent handles, slot reuse and failure ownership passed\n";return 0;

@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstring>
 #include <type_traits>
+#include <thread>
 
 namespace {
 
@@ -43,12 +44,28 @@ constexpr rebirths::Digest SegaHardGirlsLargeAddressAwareWithChecksum = {
 
 }
 
+namespace rebirths::testing {
+extern size_t identityHashCalls;
+extern bool failIdentityHash;
+}
+
 static_assert(!std::is_constructible_v<rebirths::Context, HMODULE, std::wstring, std::wstring>,
               "A patch context must name its game explicitly");
 static_assert(std::is_constructible_v<rebirths::Context, HMODULE, const rebirths::GameSpec&,
                                     std::wstring, std::wstring>);
 
-int main() {
+int main(int argc,char** argv) {
+    if(argc>1&&std::strcmp(argv[1],"failure")==0) {
+        rebirths::testing::failIdentityHash=true;
+        for(unsigned i=0;i<8;++i) {
+            bool rejected=false;
+            try{rebirths::ProcessIdentity();}catch(...){rejected=true;}
+            assert(rejected);
+        }
+        assert(rebirths::testing::identityHashCalls==1);
+        std::puts("startup identity failure cached without rereading executable");
+        return 0;
+    }
     const rebirths::GameId ids[] = {
         rebirths::GameId::Rebirth1,
         rebirths::GameId::Rebirth2,
@@ -99,6 +116,22 @@ int main() {
 
     rebirths::Digest unknown{};
     assert(!rebirths::IdentifyGame(unknown));
+    const rebirths::ExecutableIdentity* identities[8]{};
+    // Match both callers' real access patterns in separate fixture processes.
+    if(argc>1&&std::strcmp(argv[1],"audio-first")==0) {
+        assert(!rebirths::ProcessIdentity().spec);
+        assert(rebirths::ProcessIdentity().digest!=unknown);
+    } else {
+        assert(rebirths::ProcessIdentity().digest!=unknown);
+        assert(!rebirths::ProcessIdentity().spec);
+    }
+    std::thread readers[8];
+    for(size_t i=0;i<8;++i)readers[i]=std::thread([&,i]{identities[i]=&rebirths::ProcessIdentity();});
+    for(auto& reader:readers)reader.join();
+    for(auto identity:identities)assert(identity==identities[0]);
+    assert(rebirths::testing::identityHashCalls==1);
+    assert(identities[0]->digest==rebirths::HashFile(rebirths::ModulePath(GetModuleHandleW(nullptr))));
+    assert(!identities[0]->spec); // The fixture EXE is not a supported game.
     std::puts("target identity/spec dispatch tests passed");
     return 0;
 }

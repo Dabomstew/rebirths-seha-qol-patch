@@ -35,6 +35,7 @@ void** openSlot = nullptr;
 bool bootstrapUsable = false;
 std::once_flag qualifyOnce;
 std::atomic<bool> enabled{false};
+bool verifyBank = false;
 std::atomic<HANDLE> streamingFile{INVALID_HANDLE_VALUE};
 platform::Handle sourceFile;
 BY_HANDLE_FILE_INFORMATION sourceIdentity{};
@@ -71,7 +72,7 @@ BOOL WINAPI ReadVoice(HANDLE file, LPVOID buffer, DWORD length, LPDWORD bytes, L
     ok = GetOverlappedResult(file,overlapped,&transferred,TRUE);
     error = GetLastError();
     if (!ok) { SetLastError(error); return FALSE; }
-    if (!audio_tail::OverlayVoiceMetadata(buffer,transferred,offset,pristine.data(),corrected.data(),pristine.size())) {
+    if (!audio_tail::OverlayVoiceMetadata(buffer,transferred,offset,pristine.data(),corrected.data(),pristine.size(),verifyBank)) {
         // Qualified source is held read-only without write/delete sharing.
         // A mismatched read cannot be delivered as mixed correction metadata.
         result = "stream metadata identity rejected";
@@ -116,7 +117,7 @@ __declspec(naked) void InitializeAdapter() {
 
 void Qualify() noexcept {
     try {
-        const GameSpec* spec = IdentifyGame(HashFile(ModulePath(gameModule)));
+        const GameSpec* spec = ProcessIdentity().spec;
         if (!spec || spec->id != profile->game) { result="executable identity rejected"; return; }
         const auto proxy = ModulePath(proxyModule);
         const auto directory = proxy.substr(0,proxy.find_last_of(L"\\/"));
@@ -131,18 +132,22 @@ void Qualify() noexcept {
         platform::Handle file(CreateFileW(bank.c_str(),GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN,nullptr));
         if (!file || !GetFileInformationByHandle(file.value,&sourceIdentity) || sourceIdentity.nFileSizeHigh ||
                 sourceIdentity.nFileSizeLow != profile->bankSize) { result="voice bank size/open rejected"; return; }
-        platform::Sha hash;
-        std::vector<unsigned char> chunk(4*1024*1024);
-        size_t total=0; DWORD done=0;
-        for (;;) {
-            if (!ReadFile(file.value,chunk.data(),static_cast<DWORD>(chunk.size()),&done,nullptr)) {
-                result="voice bank read rejected"; return;
+        DWORD done=0;
+        verifyBank=Option(context,L"AudioTail",L"VerifyBanks",0)!=0;
+        if (verifyBank) {
+            platform::Sha hash;
+            std::vector<unsigned char> chunk(4*1024*1024);
+            size_t total=0;
+            for (;;) {
+                if (!ReadFile(file.value,chunk.data(),static_cast<DWORD>(chunk.size()),&done,nullptr)) {
+                    result="voice bank read rejected"; return;
+                }
+                if (!done) break;
+                hash.Add(chunk.data(),done); total+=done;
             }
-            if (!done) break;
-            hash.Add(chunk.data(),done); total+=done;
-        }
-        if (total!=profile->bankSize || hash.Finish()!=platform::Unhex(profile->bankHash)) {
-            result="voice bank identity rejected"; return;
+            if (total!=profile->bankSize || hash.Finish()!=platform::Unhex(profile->bankHash)) {
+                result="voice bank identity rejected"; return;
+            }
         }
         LARGE_INTEGER zero{};
         unsigned char header[52]{};
@@ -251,6 +256,7 @@ void ConfigureVoiceRead(HANDLE file,const unsigned char* original,const unsigned
     pristine.assign(original,original+prefix);corrected.assign(changed,changed+prefix);
     if(!GetFileInformationByHandle(file,&sourceIdentity))throw std::runtime_error("Fixture file identity failed");
     streamingFile=file;enabled=active;
+    verifyBank=true; // Existing read fixtures explicitly exercise diagnostics.
 }
 BOOL WINAPI ReadVoiceTest(HANDLE file,LPVOID buffer,DWORD length,LPDWORD bytes,LPOVERLAPPED overlapped) noexcept {
     return ReadVoice(file,buffer,length,bytes,overlapped);

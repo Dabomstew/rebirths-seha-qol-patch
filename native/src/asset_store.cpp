@@ -10,14 +10,14 @@
 
 namespace rebirths::assets {
 namespace fs=std::filesystem;
-namespace {
-void Need(bool ok,const char* message){if(!ok)throw std::runtime_error(message);}
-using rebirths::platform::Hex;
-using rebirths::platform::Sha;
 std::wstring Extended(const fs::path& p){
     auto s=fs::absolute(p).wstring();if(s.rfind(L"\\\\?\\",0)==0)return s;
     if(s.rfind(L"\\\\",0)==0)return L"\\\\?\\UNC\\"+s.substr(2);return L"\\\\?\\"+s;
 }
+namespace {
+void Need(bool ok,const char* message){if(!ok)throw std::runtime_error(message);}
+using rebirths::platform::Hex;
+using rebirths::platform::Sha;
 void ReadAt(HANDLE file,uint64_t offset,void* output,DWORD count){
     LARGE_INTEGER at{};at.QuadPart=static_cast<LONGLONG>(offset);DWORD got=0;
     Need(offset<=uint64_t(INT64_MAX)&&SetFilePointerEx(file,at,nullptr,FILE_BEGIN)&&
@@ -31,11 +31,12 @@ struct Reader {
 };
 struct Source {std::string path,group;uint32_t kind;uint64_t size,ticks,indexSize;Hash hash,indexHash;};
 struct Manifest {uint32_t game,backend;std::vector<Source> sources;std::vector<std::pair<uint32_t,File>> files;};
-Manifest Parse(const fs::path& path){
+Manifest Parse(const fs::path& path,bool verify){
     auto handle=OpenRead(path);auto size=FileSize(handle.value);Need(size>=56&&size<=128*1024*1024+32,"Manifest size bound");
     Reader r;r.bytes.resize(static_cast<size_t>(size));ReadAt(handle.value,0,r.bytes.data(),static_cast<DWORD>(size));
-    Sha sha;sha.Add(r.bytes.data(),r.bytes.size()-32);auto digest=sha.Finish();
-    Need(!std::memcmp(digest.data(),r.bytes.data()+r.bytes.size()-32,32),"Manifest digest mismatch");r.bytes.resize(r.bytes.size()-32);
+    if(verify){Sha sha;sha.Add(r.bytes.data(),r.bytes.size()-32);auto digest=sha.Finish();
+        Need(!std::memcmp(digest.data(),r.bytes.data()+r.bytes.size()-32,32),"Manifest digest mismatch");}
+    r.bytes.resize(r.bytes.size()-32);
     char magic[8];r.Take(magic,8);Need(!std::memcmp(magic,"RBAST001",8),"Manifest format");
     Manifest m{};m.game=r.Number<uint32_t>();m.backend=r.Number<uint32_t>();
     auto ns=r.Number<uint32_t>(),nf=r.Number<uint32_t>();Need(m.game<4&&m.backend<2&&ns<=100000&&nf<=1000000,"Manifest header bounds");
@@ -44,6 +45,8 @@ Manifest Parse(const fs::path& path){
         Source s{};s.path=r.String();s.group=r.String();s.kind=r.Number<uint32_t>();s.size=r.Number<uint64_t>();s.ticks=r.Number<uint64_t>();s.indexSize=r.Number<uint64_t>();
         r.Take(s.hash.data(),32);r.Take(s.indexHash.data(),32);
         Need(s.kind<2&&s.indexSize<=s.size&&s.indexSize<=64*1024*1024,"Manifest source bounds");
+        if(s.kind==1)Need(s.indexSize>=20&&(s.indexSize-20)%288==0&&
+            (s.indexSize-20)/288<=65536,"Manifest PAC table bounds");
         Need(sourcePaths.insert(CanonicalPath(s.path,true)).second,"Duplicate manifest source");m.sources.push_back(std::move(s));
     }
     std::set<std::pair<std::string,uint32_t>> keys;
@@ -92,11 +95,11 @@ std::unordered_map<std::string,std::string> Discover(const fs::path& game,uint32
     }
     return result;
 }
-void AddScope(Store& result,const fs::path& game,uint32_t id,bool dlc){
+void AddScope(Store& result,const fs::path& game,uint32_t id,bool dlc,bool verify){
     auto installed=Discover(game,id,dlc);if(dlc&&installed.empty())return;
     const auto manifestPath=CheckedPath(result.root,dlc?"dlc.manifest":"base.manifest");
     if(dlc&&!fs::exists(manifestPath))return;
-    auto m=Parse(manifestPath);Need(m.game==id,"Wrong manifest game");
+    auto m=Parse(manifestPath,verify);Need(m.game==id,"Wrong manifest game");
     if(result.count)Need(m.backend==result.backend,"Mixed backend scopes");result.backend=m.backend;
     std::unordered_set<std::string> rejected,recorded,cpk;
     std::vector<Handle> locks;
@@ -109,9 +112,10 @@ void AddScope(Store& result,const fs::path& game,uint32_t id,bool dlc){
             auto h=OpenRead(CheckedPath(game,s.path));BY_HANDLE_FILE_INFORMATION info{};
             Need(GetFileInformationByHandle(h.value,&info)!=0,"Source information failed");
             uint64_t time=uint64_t(info.ftLastWriteTime.dwHighDateTime)<<32|info.ftLastWriteTime.dwLowDateTime;
-            Need(FileSize(h.value)==s.size&&time==s.ticks&&HashRange(h.value,0,s.indexSize)==s.indexHash,"Source identity mismatch");
+            Need(FileSize(h.value)==s.size&&time==s.ticks,"Source identity mismatch");
+            if(verify)Need(HashRange(h.value,0,s.indexSize)==s.indexHash,"Source digest mismatch");
             if(s.kind==0)Need(s.indexSize==s.size,"Incomplete CPK identity");
-            else{
+            else if(verify){
                 Need(s.indexSize>=20,"PAC table bound");
                 auto& table=tables[s.path];table.resize(static_cast<size_t>(s.indexSize));
                 ReadAt(h.value,0,table.data(),static_cast<DWORD>(table.size()));
@@ -129,7 +133,8 @@ void AddScope(Store& result,const fs::path& game,uint32_t id,bool dlc){
     for(auto& pair:m.files){auto& f=pair.second;const auto& source=m.sources[pair.first];
         Need(f.path.rfind(dlc?"dlc/":"base/",0)==0,"Generated scope mismatch");
         const auto sourcePart=std::stoul(source.path.substr(source.path.size()-9,5));Need((f.id>>16)==sourcePart,"Original part identity mismatch");
-        if(!rejected.count(source.group)){
+        Need(uint64_t(f.id&65535)<(source.indexSize-20)/288,"Original entry range mismatch");
+        if(verify&&!rejected.count(source.group)){
             const auto& table=tables.at(source.path);auto offset=20+size_t(f.id&65535)*288;
             Need(offset<=table.size()&&288<=table.size()-offset&&
                  !std::memcmp(f.metadata.data(),table.data()+offset,288),"Original entry metadata mismatch");
@@ -181,10 +186,10 @@ Hash HashRange(HANDLE file,uint64_t start,uint64_t length){
     for(uint64_t at=0;at<length;){auto count=static_cast<DWORD>(std::min<uint64_t>(buffer.size(),length-at));ReadAt(file,start+at,buffer.data(),count);sha.Add(buffer.data(),count);at+=count;}
     return sha.Finish();
 }
-Store Load(const fs::path& root,const fs::path& gameRoot,uint32_t game){
+Store Load(const fs::path& root,const fs::path& gameRoot,uint32_t game,bool verify){
     Need(game<4,"Unsupported game");Store result;result.root=CheckedPath(root);
-    AddScope(result,CheckedPath(gameRoot),game,false);
-    try{AddScope(result,CheckedPath(gameRoot),game,true);}catch(const std::exception& e){result.diagnostics.push_back(std::string("DLC unavailable: ")+e.what());}
+    AddScope(result,CheckedPath(gameRoot),game,false,verify);
+    try{AddScope(result,CheckedPath(gameRoot),game,true,verify);}catch(const std::exception& e){result.diagnostics.push_back(std::string("DLC unavailable: ")+e.what());}
     Need(result.count!=0,"No prepared assets match sources");return result;
 }
 Handle OpenAsset(const Store& store,const File& f,bool verify){

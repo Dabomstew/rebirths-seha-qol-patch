@@ -15,6 +15,8 @@ int main() {
     // Independent policy oracle: never generate it from catalog.json.
     struct Expected { FeatureId id; const wchar_t* key; unsigned mask; int runtime, fresh, existing; bool managed; };
     const Expected expected[] = {
+        {FeatureId::LooseFiles, L"LooseFiles", 15, 0, 0, 0, false},
+        {FeatureId::SaveAnywhere, L"SaveAnywhere", 15, 0, 0, 0, false},
         {FeatureId::EnemyTurnSoftlockFix, L"EnemyTurnSoftlockFix", 15, 1, 1, 1, false},
         {FeatureId::TrimSilentAudioTails, L"TrimSilentAudioTails", 7, 1, 1, 1, false},
         {FeatureId::UncompressedAssets, L"UncompressedAssets", 15, 0, 1, 0, true},

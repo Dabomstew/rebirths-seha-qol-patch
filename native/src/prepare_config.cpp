@@ -15,6 +15,11 @@ Settings ReadSettings(const Game& game) {
     s.assets = fs::path(assetText);
     if (s.assets.is_relative())
         s.assets = game.directory / s.assets;
+    auto looseText = Ini(config, L"Patches", L"LooseFileDirectory", L"loosefiles");
+    s.looseFiles = fs::path(looseText);
+    if (!looseText.empty() && looseText.size() < 4095) {
+        if (s.looseFiles.is_relative()) s.looseFiles = game.directory / s.looseFiles;
+    } else s.looseFiles.clear();
     s.transformProfile =
         ReadAssetProfile(game.directory, s.assets, game.id)
             .value_or(existing ? TransformProfile::Raw : TransformProfile::AdvCgHalf24V1);
@@ -41,6 +46,7 @@ void WriteSettings(const Game& game, const Settings& settings, const fs::path& a
             Set(staged, L"Patches", feature.key, bit(settings.*binding.member));
     }
     Set(staged, L"UncompressedAssets", L"Directory", directoryText);
+    if (settings.enableLooseFiles) Set(staged, L"Patches", L"LooseFiles", L"1");
     if (!hadConfig)
         Set(staged, L"UncompressedAssets", L"Verify", L"0");
 }

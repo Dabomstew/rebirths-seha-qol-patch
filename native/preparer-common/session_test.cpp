@@ -13,16 +13,17 @@ struct Fake final : Adapter {
         View v; v.game = game; v.executable = game / L"fiction.exe";
         v.paths = {{"assets", L"Assets", game / L"assets"}};
         v.features = {{"load", L"Prepared loading", 0, false}};
+        v.choices = {{"quality", L"Quality", {L"Disabled", L"Low", L"High"}, 0}};
         if (game == L"fiction-b") v.features.push_back({"skip", L"Skip", 1, true});
         return v;
     }
     std::vector<Capability> Actions(const View&) const override {
-        return {{Action::Install}, {Action::Prepare}, {Action::Play}, {Action::Rollback, false}};
+        return {{Action::Install}, {Action::Prepare}, {Action::Play}, {Action::Rollback, false}, {Action::Extract, true, L"Extract fixture files?"}};
     }
     Outcome Execute(Action a, const View&, const Report& report, const Cancel& cancel) override {
         if (fail) throw std::runtime_error("Fixture failure");
         report({L"Preparing", L"Fictional data", L"files", 2, 5});
-        if (a == Action::Prepare) {
+        if (Cancellable(a)) {
             std::unique_lock<std::mutex> lock(mutex);
             while (wait && !release && !cancel()) condition.wait_for(lock, std::chrono::milliseconds(5));
             if (cancel()) throw Cancelled("Fixture cancelled at safe boundary");
@@ -44,6 +45,12 @@ int main() {
         assert(f.installed > 0); assert(exe == game / L"fiction.exe"); ++launches;
     });
     assert(!s.Begin(Action::Install)); s.Select(f.Open(L"fiction-a")); assert(!s.Dirty());
+    s.view.choices[0].selected = 1; assert(s.Dirty());
+    s.DiscardChoices(); assert(!s.Dirty() && s.view.choices[0].selected == 0);
+    f.fail = true; s.view.choices[0].selected = 2;
+    assert(s.Begin(Action::Install)); Wait(s);
+    assert(s.Finish().state == State::Failed && s.view.choices[0].selected == 2 && s.Dirty());
+    f.fail = false; s.DiscardChoices();
     s.view.features[0].value = true; assert(s.Dirty());
     s.DiscardChoices(); assert(!s.Dirty() && f.installed == 0);
     s.view.features[0].value = true;
@@ -56,6 +63,9 @@ int main() {
     assert(s.Finish().state == State::Cancelled && !s.closeAfter && s.Dirty());
     assert(s.Begin(Action::Prepare)); s.RequestClose(true); Wait(s);
     assert(s.Finish().state == State::Cancelled && s.closeAfter);
+    assert(!s.Begin(Action::Extract));
+    assert(s.Begin(Action::Extract, true)); s.RequestClose(false); Wait(s);
+    assert(s.Finish().state == State::Cancelled && !s.closeAfter);
     assert(s.Begin(Action::Play)); s.RequestClose(true); assert(!s.Cancelling());
     { std::lock_guard<std::mutex> lock(f.mutex); f.release = true; } f.condition.notify_all(); Wait(s);
     assert(s.Finish().state == State::Completed && launches == 1 && s.closeAfter);
@@ -64,6 +74,8 @@ int main() {
     assert(badLaunch.Finish().state == State::Failed);
     View layout = f.Open(L"fiction-b");
     assert(ContentHeight(layout, 5, 500) > ContentHeight(layout, 5, 780));
+    auto noChoices = layout; noChoices.choices.clear();
+    assert(ContentHeight(layout, 5, 780) == ContentHeight(noChoices, 5, 780) + 40);
     // Destruction requests preparation cancellation and joins a live worker.
     f.release = false;
     { Session owned(f, [](const fs::path&, const fs::path&) {}); owned.Select(f.Open(L"fiction-a")); assert(owned.Begin(Action::Prepare)); }

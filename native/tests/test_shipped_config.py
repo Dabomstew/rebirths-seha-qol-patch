@@ -12,6 +12,7 @@ from shipped_config import check_feature_defaults, parse_config, read_config
 EXPECTED_CONFIG = {
     "Patches": {
         "EnemyTurnSoftlockFix": "1",
+        "SaveAnywhere": "0",
         "TrimSilentAudioTails": "1",
         "FastTextureConversion": "1",
         "FastFaceTextureCreation": "0",
@@ -23,10 +24,15 @@ EXPECTED_CONFIG = {
         "SkipChapterIntros": "0",
         "DungeonMovementFix": "1",
         "UncompressedAssets": "0",
+        "LooseFiles": "0",
+        "LooseFileDirectory": "loosefiles",
     },
     "UncompressedAssets": {
         "Directory": "rebirths-speedrun-patch\\assets",
         "Verify": "0",
+    },
+    "AudioTail": {
+        "VerifyBanks": "0",
     },
 }
 

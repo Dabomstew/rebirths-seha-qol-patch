@@ -17,9 +17,19 @@
 namespace preparer {
 namespace {
 constexpr int GameBrowse = 101, GameSelect = 102, Reload = 103, Close = 104;
-constexpr int PathFirst = 200, FeatureFirst = 400, ActionFirst = 600;
+constexpr int PathFirst = 200, FeatureFirst = 400, ChoiceFirst = 500, ActionFirst = 600;
 constexpr UINT SelectPending = WM_APP + 1;
 struct Positioned { HWND handle; int x, y, w, h; };
+RECT InitialBounds(const RECT& work, int clientWidth, int clientHeight, DWORD style) {
+    RECT bounds{0, 0, clientWidth, clientHeight};
+    if (!AdjustWindowRect(&bounds, style, FALSE)) throw std::runtime_error("Cannot size the preparer window");
+    const int width = std::min(int(bounds.right - bounds.left), int(work.right - work.left));
+    const int height = std::min(int(bounds.bottom - bounds.top), int(work.bottom - work.top));
+    if (width <= 0 || height <= 0) throw std::runtime_error("No usable desktop area for the preparer");
+    const int x = work.left + (work.right - work.left - width) / 2;
+    const int y = work.top + (work.bottom - work.top - height) / 2;
+    return {x, y, x + width, y + height};
+}
 std::wstring Text(HWND h) {
     const int n = GetWindowTextLengthW(h);
     std::wstring s(n + 1, L'\0'); GetWindowTextW(h, s.data(), n + 1); s.resize(n); return s;
@@ -55,7 +65,7 @@ struct App {
     HWND note = nullptr, status = nullptr, details = nullptr, bar = nullptr, close = nullptr, browse = nullptr;
     HWND groups[2]{}; HFONT font = nullptr, heading = nullptr;
     IAccPropServices* accessibility = nullptr;
-    std::vector<HWND> children, paths, features;
+    std::vector<HWND> children, paths, features, choices, choiceLabels;
     std::vector<std::pair<Action, HWND>> actions;
     std::vector<fs::path> detected;
     fs::path pendingSelection;
@@ -100,7 +110,7 @@ struct App {
     void Build() {
         updating = true;
         for (auto h : children) DestroyWindow(h);
-        children.clear(); paths.clear(); features.clear(); actions.clear(); positions.clear();
+        children.clear(); paths.clear(); features.clear(); choices.clear(); choiceLabels.clear(); actions.clear(); positions.clear();
         title = Control(L"STATIC", product.heading, 0);
         SendMessageW(title, WM_SETFONT, reinterpret_cast<WPARAM>(heading), TRUE);
         intro = Control(L"STATIC", product.introduction, 0);
@@ -126,6 +136,14 @@ struct App {
             paths.push_back(Control(L"EDIT", p.value.wstring(), WS_TABSTOP | WS_BORDER | ES_AUTOHSCROLL |
                 (p.editable ? 0 : ES_READONLY), PathFirst + int(i) * 2 + 1, p.label.c_str()));
         }
+        for (size_t i = 0; i < session.view.choices.size(); ++i) {
+            const auto& c = session.view.choices[i];
+            if (c.options.empty() || c.selected >= c.options.size()) throw std::runtime_error("Invalid preparer dropdown selection");
+            choiceLabels.push_back(Control(L"STATIC", c.label, 0));
+            auto h = Control(L"COMBOBOX", L"", WS_TABSTOP | CBS_DROPDOWNLIST | WS_VSCROLL, ChoiceFirst + int(i), c.label.c_str());
+            for (const auto& option : c.options) SendMessageW(h, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(option.c_str()));
+            SendMessageW(h, CB_SETCURSEL, c.selected, 0); choices.push_back(h);
+        }
         for (unsigned g = 0; g < 2; ++g) groups[g] = Control(L"STATIC", product.groups[g], 0);
         for (size_t i = 0; i < session.view.features.size(); ++i) {
             const auto& f = session.view.features[i];
@@ -135,6 +153,7 @@ struct App {
         note = Control(L"STATIC", session.view.note, 0);
         auto capabilities = adapter.Actions(session.view);
         for (auto action : {Action::Install, Action::Prepare, Action::Play}) {
+            if (action == Action::Prepare && !product.preparesAssets) continue;
             actions.emplace_back(action, Control(L"BUTTON", Label(action), WS_TABSTOP |
                 (action == Action::Install ? BS_DEFPUSHBUTTON : BS_PUSHBUTTON), ActionFirst + int(action)));
         }
@@ -143,7 +162,7 @@ struct App {
         bar = Control(PROGRESS_CLASSW, L"", 0, 0, L"Operation progress"); SendMessageW(bar, PBM_SETRANGE32, 0, 1000);
         details = Control(L"EDIT", L"Install / Update installs the patch and saves settings. Play applies settings and starts the game.",
             WS_TABSTOP | WS_BORDER | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY, 0, L"Operation details");
-        for (auto action : {Action::Rollback, Action::Uninstall, Action::Recover, Action::Patch4GB, Action::RestoreExe})
+        for (auto action : {Action::Rollback, Action::Uninstall, Action::Recover, Action::Patch4GB, Action::RestoreExe, Action::Extract})
             if (std::any_of(capabilities.begin(), capabilities.end(), [action](auto c) { return c.action == action; }))
                 actions.emplace_back(action, Control(L"BUTTON", Label(action), WS_TABSTOP | BS_PUSHBUTTON, ActionFirst + int(action)));
         updating = false; offset = 0; Layout(); Enable();
@@ -161,7 +180,8 @@ struct App {
         RECT r{}; GetClientRect(window, &r); const int width = MulDiv(r.right, 96, dpi);
         const int usable = std::max(380, width - 44); const bool columns = width >= 740;
         positions.clear(); int y = 18;
-        Put(title, 22, y, usable, 34); y += 36;
+        const int titleHeight = TextHeight(title, usable, 34);
+        Put(title, 22, y, usable, titleHeight); y += titleHeight + 2;
         const int introHeight = TextHeight(intro, usable, 44);
         Put(intro, 22, y, usable, introHeight); y += introHeight + 10;
         Put(browse, 22, y, 144, 30); Put(game, 178, y, usable - 300, product.multipleGames ? 300 : 30);
@@ -169,6 +189,10 @@ struct App {
         for (size_t i = 0; i < paths.size(); ++i) {
             Put(GetDlgItem(window, PathFirst + int(i) * 2), 22, y, 144, 30);
             Put(paths[i], 178, y, usable - 156, 30); y += 40;
+        }
+        for (size_t i = 0; i < choices.size(); ++i) {
+            Put(choiceLabels[i], 22, y, 144, 30);
+            Put(choices[i], 178, y, usable - 156, 300); y += 40;
         }
         int counts[2]{}; for (const auto& f : session.view.features) ++counts[f.group == 1 ? 1 : 0];
         const int colWidth = columns ? (usable - 18) / 2 : usable;
@@ -194,18 +218,19 @@ struct App {
         } else {
             int n = 0; const int w = (usable - 12) / 2;
             for (auto& a : actions) if (a.first <= Action::Play) { Put(a.second, 22 + (n % 2) * (w + 12), y + (n / 2) * 44, w, 36); ++n; }
-            Put(close, 22 + w + 12, y + 44, w, 36); y += 92;
+            Put(close, 22 + (n % 2) * (w + 12), y + (n / 2) * 44, w, 36);
+            y += ((n + 2) / 2) * 44 + 4;
         }
         Put(status, 22, y, usable, 44); y += 48; Put(bar, 22, y, usable, 18); y += 28;
         Put(details, 22, y, usable, 80); y += 92;
         for (bool executableRow : {false, true}) {
             int count = 0;
-            for (const auto& a : actions) if (a.first > Action::Play && (a.first >= Action::Patch4GB) == executableRow) ++count;
+            for (const auto& a : actions) if (a.first > Action::Play && (a.first == Action::Patch4GB || a.first == Action::RestoreExe) == executableRow) ++count;
             if (!count) continue;
             const int perRow = std::min(count, columns ? 3 : 2);
             const int buttonWidth = (usable - 12 * (perRow - 1)) / perRow;
             int n = 0;
-            for (auto& a : actions) if (a.first > Action::Play && (a.first >= Action::Patch4GB) == executableRow) {
+            for (auto& a : actions) if (a.first > Action::Play && (a.first == Action::Patch4GB || a.first == Action::RestoreExe) == executableRow) {
                 Put(a.second, 22 + (n % perRow) * (buttonWidth + 12), y + (n / perRow) * 40, buttonWidth, 32); ++n;
             }
             y += ((count + perRow - 1) / perRow) * 40;
@@ -224,7 +249,8 @@ struct App {
     void Focus(HWND target) {
         for (const auto& p : positions) if (p.handle == target) {
             RECT r{}; GetClientRect(window, &r); const int page = MulDiv(r.bottom, 96, dpi);
-            const int actualHeight = product.multipleGames && target == game ? 30 : p.h;
+            const int actualHeight = (product.multipleGames && target == game) ||
+                std::find(choices.begin(), choices.end(), target) != choices.end() ? 30 : p.h;
             if (p.y < offset) Scroll(p.y);
             else if (p.y + actualHeight > offset + page) Scroll(p.y + actualHeight - page);
         }
@@ -235,11 +261,12 @@ struct App {
         EnableWindow(browse, !session.busy); EnableWindow(game, !session.busy);
         for (auto h : paths) EnableWindow(h, selected && !session.busy);
         for (auto h : features) EnableWindow(h, selected && !session.busy);
+        for (auto h : choices) EnableWindow(h, selected && !session.busy);
         for (size_t i = 0; i < paths.size(); ++i) EnableWindow(GetDlgItem(window, PathFirst + int(i) * 2), selected && !session.busy && session.view.paths[i].editable);
         EnableWindow(reload, selected && !session.busy);
         for (auto& a : actions) EnableWindow(a.second, session.Available(a.first));
         EnableWindow(close, TRUE);
-        SetWindowTextW(close, session.busy && session.action == Action::Prepare ? L"Cancel" : L"Close");
+        SetWindowTextW(close, session.busy && Cancellable(session.action) ? L"Cancel" : L"Close");
     }
     void Select(const fs::path& path) {
         auto next = adapter.Open(path);
@@ -249,6 +276,7 @@ struct App {
     void SyncPaths() {
         updating = true;
         for (size_t i = 0; i < paths.size(); ++i) SetWindowTextW(paths[i], session.view.paths[i].value.c_str());
+        for (size_t i = 0; i < choices.size(); ++i) SendMessageW(choices[i], CB_SETCURSEL, session.view.choices[i].selected, 0);
         updating = false;
     }
     void ConfirmSelection() {
@@ -288,14 +316,32 @@ struct App {
         } else if (id >= FeatureFirst && id < FeatureFirst + int(features.size()) && notification == BN_CLICKED) {
             const size_t i = size_t(id - FeatureFirst); session.view.features[i].value = SendMessageW(features[i], BM_GETCHECK, 0, 0) == BST_CHECKED;
             adapter.Changed(session.view, session.view.features[i].id); SyncPaths();
-        } else if (id >= ActionFirst && id <= ActionFirst + int(Action::RestoreExe) && notification == BN_CLICKED) {
+        } else if (id >= ChoiceFirst && id < ChoiceFirst + int(choices.size()) && notification == CBN_SELCHANGE) {
+            const size_t i = size_t(id - ChoiceFirst);
+            const auto selected = SendMessageW(choices[i], CB_GETCURSEL, 0, 0);
+            if (selected >= 0 && size_t(selected) < session.view.choices[i].options.size()) {
+                session.view.choices[i].selected = size_t(selected);
+                adapter.Changed(session.view, session.view.choices[i].id); SyncPaths();
+            }
+        } else if (id >= ActionFirst && id <= ActionFirst + int(Action::Extract) && notification == BN_CLICKED) {
             const auto action = Action(id - ActionFirst);
             if (action > Action::Play) {
                 if (!Discard()) return;
                 session.DiscardChoices(); SyncPaths();
                 for (size_t i = 0; i < features.size(); ++i) SendMessageW(features[i], BM_SETCHECK, session.view.features[i].value ? BST_CHECKED : BST_UNCHECKED, 0);
             }
-            if (session.Begin(action)) { started = GetTickCount64(); Enable(); SendMessageW(bar, PBM_SETPOS, 0, 0); SetWindowTextW(status, L"Starting..."); }
+            bool confirmed = false;
+            for (const auto& capability : adapter.Actions(session.view)) {
+                if (capability.action != action || capability.confirmation.empty()) continue;
+                TASKDIALOGCONFIG config{}; config.cbSize = sizeof(config); config.hwndParent = window;
+                config.pszWindowTitle = product.windowTitle.c_str(); config.pszMainInstruction = Label(action);
+                config.pszContent = capability.confirmation.c_str();
+                config.dwCommonButtons = TDCBF_YES_BUTTON | TDCBF_NO_BUTTON; config.nDefaultButton = IDNO;
+                config.dwFlags = TDF_ALLOW_DIALOG_CANCELLATION; int answer = 0;
+                if (FAILED(TaskDialogIndirect(&config, &answer, nullptr, nullptr)) || answer != IDYES) return;
+                confirmed = true;
+            }
+            if (session.Begin(action, confirmed)) { started = GetTickCount64(); Enable(); SendMessageW(bar, PBM_SETPOS, 0, 0); SetWindowTextW(status, L"Starting..."); }
         }
     }
     void Tick() {
@@ -377,10 +423,14 @@ int RunGui(Adapter& adapter, const View* initial, int show) {
         WNDCLASSW cls{}; cls.hInstance = GetModuleHandleW(nullptr); cls.lpfnWndProc = Proc;
         cls.lpszClassName = L"SharedNativeGamePreparer"; cls.hCursor = LoadCursorW(nullptr, IDC_ARROW); cls.hbrBackground = GetSysColorBrush(COLOR_WINDOW); RegisterClassW(&cls);
         const DWORD style = WS_OVERLAPPEDWINDOW | WS_VSCROLL | WS_CLIPCHILDREN;
-        RECT work{}; SystemParametersInfoW(SPI_GETWORKAREA, 0, &work, 0);
+        MONITORINFO monitor{sizeof(monitor)};
+        RECT work{};
+        if (GetMonitorInfoW(MonitorFromWindow(GetForegroundWindow(), MONITOR_DEFAULTTOPRIMARY), &monitor)) work = monitor.rcWork;
+        else if (!SystemParametersInfoW(SPI_GETWORKAREA, 0, &work, 0)) throw std::runtime_error("Cannot find the desktop work area");
         size_t maintenance = 0; for (auto c : adapter.Actions(a.session.view)) if (c.action > Action::Play) ++maintenance;
-        RECT bounds{0, 0, a.Px(780), std::min(a.Px(ContentHeight(a.session.view, maintenance, 780)), int(work.bottom - work.top) - a.Px(70))}; AdjustWindowRect(&bounds, style, FALSE);
-        auto window = CreateWindowExW(0, cls.lpszClassName, a.product.windowTitle.c_str(), style, CW_USEDEFAULT, CW_USEDEFAULT,
+        const auto bounds = InitialBounds(work, a.Px(780),
+            std::min(a.Px(ContentHeight(a.session.view, maintenance, 780)), int(work.bottom - work.top) - a.Px(70)), style);
+        auto window = CreateWindowExW(0, cls.lpszClassName, a.product.windowTitle.c_str(), style, bounds.left, bounds.top,
             bounds.right - bounds.left, bounds.bottom - bounds.top, nullptr, nullptr, cls.hInstance, &a);
         if (window) {
             ShowWindow(window, show); UpdateWindow(window); MSG msg{};

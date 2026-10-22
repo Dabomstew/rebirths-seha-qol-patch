@@ -1,6 +1,7 @@
 import contextlib
 import hashlib
 import io
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -27,8 +28,8 @@ class NativeStoreTests(unittest.TestCase):
     def prepare(self,backend=0):
         with contextlib.redirect_stdout(io.StringIO()):prep.prepare(self.game,self.out,0,backend,self.decoder,limit=380)
 
-    def probe(self,expected=0):
-        result=subprocess.run([str(PROBE),str(self.out),str(self.game),'0'],capture_output=True,text=True)
+    def probe(self,expected=0,verify=True):
+        result=subprocess.run([str(PROBE),str(self.out),str(self.game),'0',str(int(verify))],capture_output=True,text=True)
         self.assertEqual(result.returncode,expected,result.stderr)
         return result.stdout.strip()
 
@@ -67,6 +68,16 @@ class NativeStoreTests(unittest.TestCase):
                 else:sources[0]['kind']=1
                 data=fmt.encode_manifest(game,backend,sources,files)
             path.write_bytes(data);self.probe(1)
+            if mutate=='digest':self.assertEqual(self.probe(verify=False),'3 0 0')
+            else:self.probe(1,verify=False)
+
+    def test_source_content_diagnostics_do_not_gate_normal_play(self):
+        self.prepare()
+        path=self.game/'data/GAME00000.pac';stamp=path.stat()
+        data=bytearray(path.read_bytes());data[28]^=1;path.write_bytes(data)
+        os.utime(path,ns=(stamp.st_atime_ns,stamp.st_mtime_ns))
+        self.assertEqual(self.probe(verify=False),'3 0 0')
+        self.assertEqual(self.probe(),'1 1 0')
 
     def test_generated_byte_corruption_detected(self):
         self.prepare();_,_,_,files=fmt.decode_manifest((self.out/'base.manifest').read_bytes())

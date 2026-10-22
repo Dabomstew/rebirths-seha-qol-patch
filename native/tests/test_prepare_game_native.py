@@ -133,6 +133,36 @@ class PreparerFixture(unittest.TestCase):
                         self.run_app('rollback', game)
                         self.assertEqual(config.read_bytes(), before)
 
+    def test_loose_files_default_off_and_custom_settings_preserved(self):
+        for index in range(4):
+            game, _ = self.fixture(index)
+            proxy = game / 'Birth3' if index == 2 else game
+            proxy.mkdir(exist_ok=True)
+            config = proxy / 'rebirths-patches.ini'
+            self.run_app('prepare', game)
+            parsed = configparser.ConfigParser(interpolation=None)
+            parsed.read(config, encoding='utf-8')
+            self.assertEqual(parsed.getint('Patches', 'LooseFiles'), 0)
+            self.assertEqual(parsed.get('Patches', 'LooseFileDirectory'), 'loosefiles')
+            self.run_app('rollback', game)
+            for value in (None, 0, 1):
+                before = b'[Patches]\r\nUncompressedAssets=0\r\n; user mod settings\r\n'
+                if value is not None:
+                    before += f'LooseFiles={value}\r\nLooseFileDirectory=custom mods\\files\r\n'.encode()
+                config.write_bytes(before)
+                self.run_app('prepare', game)
+                parsed.read(config, encoding='utf-8')
+                # The preparer has no loose-file control; both absent and saved
+                # choices are retained, including a custom path and comments.
+                current = config.read_text(encoding='utf-8')
+                self.assertIn('; user mod settings', current)
+                self.assertEqual('LooseFiles=' in current, value is not None)
+                if value is not None:
+                    self.assertIn(f'LooseFiles={value}', current)
+                    self.assertIn('LooseFileDirectory=custom mods\\files', current)
+                self.run_app('rollback', game)
+                self.assertEqual(config.read_bytes(), before)
+
     def test_enemy_turn_fix_is_default_on_and_preserved_without_a_control(self):
         for index in range(4):
             with self.subTest(game=index):

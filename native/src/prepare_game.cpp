@@ -89,4 +89,15 @@ void PrepareAndInstall(const Game& game, const Settings& settings, const Report&
         throw std::runtime_error("Cancelled; installed files are unchanged");
     install::InstallPrepared(game, settings, assets);
 }
+Result ExtractAndInstall(const Game& game, const Settings& settings, const Report& report,
+                         const Cancel& cancel) {
+    install::Preflight(game, settings);
+    Need(!settings.looseFiles.empty() && settings.looseFiles.is_absolute(), "Choose a full loose-file folder path");
+    auto result = ExtractLooseAssets(game.directory, settings.looseFiles, game.id, report, cancel);
+    if (cancel && cancel()) throw std::runtime_error("Cancelled; loose loading was not enabled");
+    auto enabled = settings;
+    enabled.enableLooseFiles = true;
+    install::InstallPrepared(game, enabled, settings.assets);
+    return result;
+}
 } // namespace rebirths::prepare

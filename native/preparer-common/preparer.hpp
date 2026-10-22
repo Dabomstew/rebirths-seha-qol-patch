@@ -20,16 +20,18 @@
 
 namespace preparer {
 namespace fs = std::filesystem;
-enum class Action { Install, Prepare, Play, Rollback, Uninstall, Recover, Patch4GB, RestoreExe };
+enum class Action { Install, Prepare, Play, Rollback, Uninstall, Recover, Patch4GB, RestoreExe, Extract };
 enum class State { Completed, Cancelled, Failed };
 struct Cancelled : std::runtime_error { using std::runtime_error::runtime_error; };
 struct PathField { std::string id; std::wstring label; fs::path value; bool editable = true; };
 struct Feature { std::string id; std::wstring label; unsigned group = 0; bool value = false; };
+struct Choice { std::string id; std::wstring label; std::vector<std::wstring> options; size_t selected = 0; };
 struct View {
     fs::path game, executable;
     std::wstring gameName, note;
     std::vector<PathField> paths;
     std::vector<Feature> features;
+    std::vector<Choice> choices;
     // Immutable backend settings/identity snapshot. The shell never interprets it.
     std::shared_ptr<const void> snapshot;
 };
@@ -37,10 +39,13 @@ struct Product {
     std::wstring windowTitle, heading, introduction;
     std::wstring groups[2] = {L"Loading improvements", L"Optional gameplay changes"};
     bool multipleGames = false;
+    // Install/configuration-only products omit the asset preparation action.
+    bool preparesAssets = true;
 };
 struct Progress { std::wstring stage, detail, unit; uint64_t completed = 0, total = 0; };
 struct Outcome { State state = State::Completed; std::wstring summary, detail; };
-struct Capability { Action action; bool enabled = true; };
+struct Capability { Action action; bool enabled = true; std::wstring confirmation = {}; };
+bool Cancellable(Action);
 using Report = std::function<void(const Progress&)>;
 using Cancel = std::function<bool()>;
 using Launcher = std::function<void(const fs::path&, const fs::path&)>;
@@ -77,7 +82,7 @@ public:
     void DiscardChoices();
     bool Dirty() const { return !SameChoices(view, saved); }
     bool Available(Action) const;
-    bool Begin(Action);
+    bool Begin(Action, bool confirmed = false);
     void RequestClose(bool windowClose);
     bool Ready() const { return ready.load(); }
     bool Cancelling() const { return cancel.load(); }

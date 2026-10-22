@@ -14,6 +14,39 @@ void Require(bool value, const char* message) {
     if (!value) throw std::runtime_error(message);
 }
 
+void InfoWidgets() {
+    alignas(uintptr_t) unsigned char manager[0x280]{}, windows[0x100]{}, first[0x100]{}, second[0x100]{};
+    uintptr_t globals[2]{reinterpret_cast<uintptr_t>(manager),reinterpret_cast<uintptr_t>(windows)};
+    const uintptr_t base=reinterpret_cast<uintptr_t>(globals);
+    auto pointer=[](unsigned char* record,size_t offset,uintptr_t value){std::memcpy(record+offset,&value,sizeof(value));};
+    for(uint32_t nameOffset:{0x70u,0x74u,0x78u}) {
+        InfoWidgetLayout layout{0,sizeof(uintptr_t),0x20,nameOffset};
+        pointer(windows,0x20,reinterpret_cast<uintptr_t>(first));
+        pointer(first,0x10,reinterpret_cast<uintptr_t>(second));
+        std::memset(first+nameOffset,0,16);std::memset(second+nameOffset,0,16);
+        std::memcpy(second+nameOffset,"AdvWndInfo",sizeof("AdvWndInfo"));
+        Require(InfoWidget(base,layout)==reinterpret_cast<uintptr_t>(second),"list did not find info widget");
+        std::memcpy(second+nameOffset,"AdvWndInfoMoney",sizeof("AdvWndInfoMoney"));
+        Require(InfoWidget(base,layout)==reinterpret_cast<uintptr_t>(second),"money widget not found");
+        pointer(manager,0,1);pointer(manager,0x70,0x12345678);
+        *reinterpret_cast<uint32_t*>(manager+0x27c)=1;
+        Require(InfoWidget(base,layout)==0x12345678,"inline active widget lost precedence");
+        *reinterpret_cast<uint32_t*>(manager+0x27c)=0;
+        Require(InfoWidget(base,layout)==reinterpret_cast<uintptr_t>(second),"inactive inline did not fall back");
+        *reinterpret_cast<uint32_t*>(manager+0x27c)=1;pointer(manager,0x70,0);
+        Require(InfoWidget(base,layout)==reinterpret_cast<uintptr_t>(second),"empty inline did not fall back");
+        globals[0]=0;
+        Require(InfoWidget(base,layout)==reinterpret_cast<uintptr_t>(second),"absent manager did not fall back");
+        std::memcpy(second+nameOffset,"AdvWndInfoOther",sizeof("AdvWndInfoOther"));
+        pointer(second,0x10,reinterpret_cast<uintptr_t>(first));
+        Require(InfoWidget(base,layout)==0,"cyclic nonmatching list escaped bound");
+        pointer(second,0x10,0);
+        Require(InfoWidget(base,layout)==0,"nonmatching list accepted name prefix");
+        globals[1]=0;Require(InfoWidget(base,layout)==0,"absent windows changed behavior");
+        globals[0]=reinterpret_cast<uintptr_t>(manager);globals[1]=reinterpret_cast<uintptr_t>(windows);
+    }
+}
+
 void Tracks() {
     // Native terminal values are copied exactly, even for NaN/infinity; inactive
     // tracks and unrelated words must retain their original bytes.
@@ -154,7 +187,7 @@ void Epochs() {
 
 int main() {
     try {
-        Tracks(); PendingPolls(); CleanupPolls(); DelayPolls(); Epochs();
+        InfoWidgets(); Tracks(); PendingPolls(); CleanupPolls(); DelayPolls(); Epochs();
         std::printf("ADV operations: %u independent contract checks passed\n", checks);
         return 0;
     } catch (const std::exception& error) {

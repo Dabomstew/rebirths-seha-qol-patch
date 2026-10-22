@@ -3,12 +3,13 @@
 
 int wmain(int argc,wchar_t** argv){
     try{
-        if(argc!=4)return 2;
-        auto store=rebirths::assets::Load(argv[1],argv[2],std::stoul(argv[3]));
+        if(argc!=4&&argc!=5)return 2;
+        const bool verify=argc==4||std::stoul(argv[4])!=0;
+        auto store=rebirths::assets::Load(argv[1],argv[2],std::stoul(argv[3]),verify);
         size_t count=0;
         for(const auto& group:store.groups)for(const auto& row:group.second){
-            auto a=rebirths::assets::OpenAsset(store,row.second,true);
-            auto b=rebirths::assets::OpenAsset(store,row.second,true);
+            auto a=rebirths::assets::OpenAsset(store,row.second,verify);
+            auto b=rebirths::assets::OpenAsset(store,row.second,verify);
             LARGE_INTEGER at{};at.QuadPart=row.second.offset;
             if(!SetFilePointerEx(a.value,at,nullptr,FILE_BEGIN))return 3;
             LARGE_INTEGER zero{},other{};

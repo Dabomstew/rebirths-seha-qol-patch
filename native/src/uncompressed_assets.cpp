@@ -14,7 +14,7 @@ constexpr Target targets[]={
     {0x2ef390,0x2eed30,0x32d9f8,0x2f27e0,0x383378,0x75e792,0x75e70b},
     {0x2b9ea0,0x2b9840,0x2f8e20,0x2bd300,0x346384,0x7259c2,0x72593b},
 };
-struct State {assets::Store store;assets::NativeApi api;assets::NativeApi::Open original=nullptr;bool verify=false;std::atomic<bool> enabled{false};};
+struct State {assets::Store store;std::filesystem::path looseRoot;assets::NativeApi api;assets::NativeApi::Open original=nullptr;bool verify=false,prepared=false,loose=false;std::atomic<bool> enabled{false};};
 std::atomic<State*> active{nullptr};
 // Internal diagnostic marker; no new proxy exports, no per-request disk logging.
 struct Diagnostics {char marker[16];uint32_t version;volatile LONG hits,dlcHits,successfulFallbacks,failedProbes,errors;};
@@ -23,12 +23,13 @@ Diagnostics diagnostics{"RBAST-STATS-001",1,0,0,0,0,0};
 bool __fastcall OpenHook(assets::Manager* manager,void*,const char* name,uint32_t* output){
     auto* state=active.load(std::memory_order_acquire);
     if(state->enabled.load(std::memory_order_acquire)){
-        try{
-            bool dlc=false;
-            if(assets::OpenPrepared(state->store,state->api,manager,name,output,state->verify,dlc)){
-                InterlockedIncrement(&diagnostics.hits);if(dlc)InterlockedIncrement(&diagnostics.dlcHits);return true;
-            }
-        }catch(...){InterlockedIncrement(&diagnostics.errors);}
+        bool dlc=false;unsigned errors=0;
+        const auto source=assets::OpenOverride(state->loose?&state->looseRoot:nullptr,
+            state->prepared?&state->store:nullptr,state->api,manager,name,output,state->verify,dlc,errors);
+        if(errors)InterlockedExchangeAdd(&diagnostics.errors,errors);
+        if(source!=assets::Source::Original){
+            InterlockedIncrement(&diagnostics.hits);if(dlc)InterlockedIncrement(&diagnostics.dlcHits);return true;
+        }
     }
     const bool result=state->original(manager,name,output);
     InterlockedIncrement(result?&diagnostics.successfulFallbacks:&diagnostics.failedProbes);return result;
@@ -43,11 +44,9 @@ void CheckEntry(uintptr_t address,uint32_t seh,uintptr_t base){
          !std::memcmp(reinterpret_cast<void*>(address),expected,sizeof(expected)),"Asset ABI signature conflict");
 }
 }
-void InstallUncompressedAssets(const Context& context) noexcept {
+void InstallUncompressedAssets(const Context& context,bool prepared,bool loose) noexcept {
     try{
         Need(!active.load(),"Asset hook already initialized");
-        const auto* identified=IdentifyGame(HashFile(ModulePath(context.game)));
-        Need(identified&&identified->id==context.spec.id,"Asset loader executable identity conflict");
         const auto start=GetTickCount64();const auto id=static_cast<uint32_t>(context.spec.id);Need(id<4,"Unknown asset target");
         const auto& t=targets[id];const auto base=reinterpret_cast<uintptr_t>(context.game);
         CheckEntry(base+t.open,t.openSeh,base);CheckEntry(base+t.resolve,t.resolveSeh,base);
@@ -64,13 +63,25 @@ void InstallUncompressedAssets(const Context& context) noexcept {
         auto crt=GetModuleHandleW(id==0?L"MSVCR110.dll":L"MSVCR120.dll");
         Need(crt&&*reinterpret_cast<FARPROC*>(slot)==GetProcAddress(crt,"??2@YAPAXI@Z")&&
              *reinterpret_cast<FARPROC*>(base+t.deleteSlot)==GetProcAddress(crt,"??3@YAXPAX@Z"),"Asset allocator IAT conflict");
-        wchar_t configured[4096]{};
-        auto length=GetPrivateProfileStringW(L"UncompressedAssets",L"Directory",L"rebirths-speedrun-patch\\assets",configured,4096,context.ini.c_str());
-        Need(length&&length<4095,"Invalid asset directory setting");
         auto game=std::filesystem::path(ModulePath(context.game)).parent_path();
-        auto root=std::filesystem::path(configured);if(root.is_relative())root=game/root;
-        auto state=std::make_unique<State>();state->store=assets::Load(root,game,id);
+        auto state=std::make_unique<State>();
         state->verify=Option(context,L"UncompressedAssets",L"Verify",0)!=0;
+        auto directory=[&](const wchar_t* section,const wchar_t* key,const wchar_t* fallback){
+            wchar_t configured[4096]{};
+            const auto length=GetPrivateProfileStringW(section,key,fallback,configured,4096,context.ini.c_str());
+            Need(length&&length<4095,"Invalid asset directory setting");
+            auto root=std::filesystem::path(configured);return root.is_relative()?game/root:root;
+        };
+        // Initialize providers independently: bad/missing prepared data must not disable loose files.
+        if(prepared)try{
+            state->store=assets::Load(directory(L"UncompressedAssets",L"Directory",L"rebirths-speedrun-patch\\assets"),game,id,state->verify);
+            state->prepared=true;
+        }catch(const std::exception& e){Log("UncompressedAssets unavailable: %s; fallback retained",e.what());}
+        if(loose)try{
+            state->looseRoot=directory(L"Patches",L"LooseFileDirectory",L"loosefiles");
+            state->loose=true;
+        }catch(const std::exception& e){Log("LooseFiles unavailable: %s; fallback retained",e.what());}
+        if(!state->prepared&&!state->loose)return;
         state->api={reinterpret_cast<assets::NativeApi::Open>(base+t.resolve),
                     reinterpret_cast<assets::NativeApi::Allocate>(base+t.allocate),
                     *reinterpret_cast<assets::NativeApi::Delete*>(base+t.deleteSlot),
@@ -92,8 +103,9 @@ void InstallUncompressedAssets(const Context& context) noexcept {
             Log("UncompressedAssets transaction rejected error=%lu",GetLastError());return;
         }
         published->enabled.store(true,std::memory_order_release);
-        Log("UncompressedAssets active backend=%s entries=%zu rejected_groups=%u verify=%u startup_ms=%llu",published->store.backend?"pac":"loose",published->store.count,published->store.rejectedGroups,published->verify,GetTickCount64()-start);
+        if(published->prepared)Log("UncompressedAssets active backend=%s entries=%zu rejected_groups=%u verify=%u startup_ms=%llu",published->store.backend?"pac":"loose",published->store.count,published->store.rejectedGroups,published->verify,GetTickCount64()-start);
         for(const auto& message:published->store.diagnostics)Log("UncompressedAssets %s",message.c_str());
+        Log("Asset providers loose=%u prepared=%u priority=loose,prepared,original",published->loose,published->prepared);
     }catch(const std::exception& e){Log("UncompressedAssets unavailable: %s; original loader retained",e.what());}
     catch(...){Log("UncompressedAssets unavailable; original loader retained");}
 }

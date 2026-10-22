@@ -115,6 +115,9 @@ void Check(const rebirths::audio_tail::Word* words,size_t count,size_t prefix) {
     const auto before=std::vector<unsigned char>(bad,bad+8);
     assert(!OverlayVoiceMetadata(bad,8,offset,original.data(),corrected.data(),prefix));
     assert(!std::memcmp(bad,before.data(),8));
+    assert(OverlayVoiceMetadata(bad,8,offset,original.data(),corrected.data(),prefix,false));
+    assert(!std::memcmp(bad,corrected.data()+offset,8));
+    assert(!OverlayVoiceMetadata(nullptr,8,offset,original.data(),corrected.data(),prefix,false));
     assert(OverlayVoiceMetadata(bad,8,uint64_t{1}<<32,original.data(),corrected.data(),prefix));
     assert(Validate(original.data(),prefix,words,count));
 }

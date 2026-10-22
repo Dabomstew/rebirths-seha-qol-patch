@@ -16,6 +16,7 @@ HMODULE proxyModule = nullptr, gameModule = nullptr;
 bool bootstrapUsable = false;
 std::once_flag qualifyOnce;
 bool enabled = false;
+bool verifyBank = false;
 const char* result = "mapping not observed";
 size_t corrected = 0;
 
@@ -52,7 +53,7 @@ bool WriteBank(void* view) noexcept {
 
 void Qualify() noexcept {
     try {
-        const GameSpec* spec = IdentifyGame(HashFile(ModulePath(gameModule)));
+        const GameSpec* spec = ProcessIdentity().spec;
         if (!spec || spec->id != profile->game) { result = "executable identity rejected"; return; }
         const auto path = ModulePath(proxyModule);
         const auto directory = path.substr(0, path.find_last_of(L"\\/"));
@@ -60,6 +61,7 @@ void Qualify() noexcept {
         enabled = ReadRuntimeFeature(spec->id, FeatureId::TrimSilentAudioTails,
             [&](const wchar_t* key, int fallback) { return Option(context, L"Patches", key, fallback); });
         if (!enabled) { result = "disabled"; return; }
+        verifyBank = Option(context, L"AudioTail", L"VerifyBanks", 0) != 0;
         HMODULE pinned = nullptr;
         if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
                 reinterpret_cast<LPCWSTR>(proxyModule), &pinned)) {
@@ -81,9 +83,11 @@ LPVOID WINAPI MapBank(HANDLE mapping, DWORD access, DWORD high, DWORD low, SIZE_
     if (!view) { result = "copy mapping failed; original retained"; return originalMap(mapping, access, high, low, length); }
     try {
         if (!ReadableBank(view)) { result = "mapping bounds rejected"; return view; }
-        platform::Sha hash; hash.Add(view, profile->bankSize);
-        if (hash.Finish() != platform::Unhex(profile->bankHash)) {
-            result = "bank identity rejected"; return view;
+        if (verifyBank) {
+            platform::Sha hash; hash.Add(view, profile->bankSize);
+            if (hash.Finish() != platform::Unhex(profile->bankHash)) {
+                result = "bank identity rejected"; return view;
+            }
         }
         if (!WriteBank(view)) {
             // Never pass a possibly partial mutation to XACT; remap pristine bytes.

@@ -1,6 +1,6 @@
 # Rebirths / Sega Hard Girls QoL Patch
 
-Version **0.2.3**.
+Version **0.2.4**.
 
 A Windows patch and preparer for **Hyperdimension Neptunia
 Re;Birth1, Re;Birth2, Re;Birth3**, and **Superdimension Neptune VS Sega Hard Girls**.
@@ -9,6 +9,12 @@ Prepare game assets ahead of time for faster loading and speed up texture
 conversion. The patch also offers tutorial skipping, shorter quiet or silent
 audio endings, and optional story-scene speedups. Available features vary by game. A default-on enemy-turn freeze fix in all four
 games keeps battle planning from leaving the game waiting after it finishes.
+
+Optional loose-file loading lets mods replace individual files in all four games.
+The preparer can extract the originals with **Extract loose files...** and enable
+loading after it finishes. A separate **Save Anywhere** INI option enables saving
+from the System menu inside dungeons; it starts off. See
+[Patch configuration](docs/CONFIGURATION.md) for both features.
 
 ## Installation and configuration
 

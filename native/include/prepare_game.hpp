@@ -19,6 +19,8 @@ struct Game {
 };
 struct Settings {
     fs::path assets;
+    fs::path looseFiles;
+    bool enableLooseFiles = false; // Set only after successful named extraction.
 #include "prepare_feature_fields.inc"
     TransformProfile transformProfile = TransformProfile::Raw;
     // Present when settings came from disk; empty hash means the INI was absent.
@@ -30,6 +32,8 @@ Settings ReadSettings(const Game& game);
 void ApplySettings(const Game& game, const Settings& settings);
 void PrepareAndInstall(const Game& game, const Settings& settings, const Report& report = {},
                        const Cancel& cancel = {});
+Result ExtractAndInstall(const Game& game, const Settings& settings, const Report& report = {},
+                         const Cancel& cancel = {});
 void Rollback(const Game& game);
 void Uninstall(const Game& game);
 void Apply4GB(const Game& game);

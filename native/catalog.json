@@ -243,6 +243,38 @@
       "preparer_policy": "preserve",
       "ui_label": null,
       "comment": "Prevent an enemy-turn freeze caused by battle planning finishing early; on by default."
+    },
+    {
+      "key": "SaveAnywhere",
+      "member": null,
+      "support": [
+        "Rebirth1",
+        "Rebirth2",
+        "Rebirth3",
+        "SegaHardGirls"
+      ],
+      "runtime_default": 0,
+      "fresh_default": 0,
+      "existing_default": 0,
+      "preparer_policy": "preserve",
+      "ui_label": null,
+      "comment": "Allow saving from the System menu inside dungeons; off by default."
+    },
+    {
+      "key": "LooseFiles",
+      "member": null,
+      "support": [
+        "Rebirth1",
+        "Rebirth2",
+        "Rebirth3",
+        "SegaHardGirls"
+      ],
+      "runtime_default": 0,
+      "fresh_default": 0,
+      "existing_default": 0,
+      "preparer_policy": "preserve",
+      "ui_label": null,
+      "comment": "Load loose files before prepared assets and original archives; off by default."
     }
   ]
 }

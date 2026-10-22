@@ -58,3 +58,6 @@ e832e22442123eb6e3ff10a241ecce5126661d959d7c86eba062c0bbade47763 | Production 0.
 d440c321a2e04c8c531f19e85ff296afdd2a7cab35eba0ee0995c3e339e3b035 | Production 0.2.2 reviewed release
 6d199e3b30dd70d4b752faad12d3b42cf1f1a59fd0ae21f1ccb42ae2fde124ca | Default-on enemy-turn completion-race fix; four-game forced-window and normal battle qualification
 14f3f6fd9fbd7798bb688fe6acabaf364b5a24546187482673abfc8dbbeef3ab | Owned battle-worker retry and cooperative cancellation; four-game normal, forced-window and native teardown qualification
+06a102c38c604cbeece9037f6b87021291817a1aa94901f61720e4dba716bac8 | Opt-in bank/source integrity diagnostics and shared ADV info lookup; four-game equipment recovery plus native voice/effect qualification
+195aab96e8f21dfebf0005eabc6f5eadff302c4166fbb09229ba86ca4406e1af | Default-off named loose-file overrides, child 0cc3c03; independently qualified default/custom roots in all four games
+9257d491a6c49aabbcc0154059092ce7880ccd7c66f649db4f457c3a9b31ec12 | Production 0.2.3 reviewed public release

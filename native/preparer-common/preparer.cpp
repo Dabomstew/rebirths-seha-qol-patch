@@ -24,15 +24,19 @@ const wchar_t* Label(Action action) {
     case Action::Recover: return L"Recover interrupted update";
     case Action::Patch4GB: return L"Apply 4GB patch";
     case Action::RestoreExe: return L"Restore original EXE";
+    case Action::Extract: return L"Extract loose files...";
     }
     return L"";
 }
+bool Cancellable(Action action) { return action == Action::Prepare || action == Action::Extract; }
 bool SameChoices(const View& a, const View& b) {
-    if (a.game != b.game || a.paths.size() != b.paths.size() || a.features.size() != b.features.size()) return false;
+    if (a.game != b.game || a.paths.size() != b.paths.size() || a.features.size() != b.features.size() || a.choices.size() != b.choices.size()) return false;
     for (size_t i = 0; i < a.paths.size(); ++i)
         if (a.paths[i].id != b.paths[i].id || a.paths[i].value != b.paths[i].value) return false;
     for (size_t i = 0; i < a.features.size(); ++i)
         if (a.features[i].id != b.features[i].id || a.features[i].value != b.features[i].value) return false;
+    for (size_t i = 0; i < a.choices.size(); ++i)
+        if (a.choices[i].id != b.choices[i].id || a.choices[i].selected != b.choices[i].selected) return false;
     return true;
 }
 Session::~Session() { cancel = true; if (worker.joinable()) worker.join(); }
@@ -49,8 +53,10 @@ bool Session::Available(Action requested) const {
     for (const auto& c : adapter.Actions(view)) if (c.action == requested) return c.enabled;
     return false;
 }
-bool Session::Begin(Action requested) {
+bool Session::Begin(Action requested, bool confirmed) {
     if (!Available(requested)) return false;
+    for (const auto& c : adapter.Actions(view))
+        if (c.action == requested && !c.confirmation.empty() && !confirmed) return false;
     if (worker.joinable()) worker.join();
     const auto chosen = view;
     action = requested; cancel = false; ready = false; closeAfter = false;
@@ -74,8 +80,8 @@ bool Session::Begin(Action requested) {
 }
 void Session::RequestClose(bool windowClose) {
     if (!busy) return;
-    if (action == Action::Prepare) cancel = true;
-    if (windowClose || action != Action::Prepare) closeAfter = true;
+    if (Cancellable(action)) cancel = true;
+    if (windowClose || !Cancellable(action)) closeAfter = true;
 }
 Progress Session::Latest() const { std::lock_guard<std::mutex> lock(mutex); return progress; }
 Outcome Session::Finish() {
@@ -99,7 +105,7 @@ int ContentHeight(const View& view, size_t maintenance, int width) {
     for (const auto& f : view.features) ++counts[f.group == 1 ? 1 : 0];
     const int featureHeight = width >= 740 ? ((counts[0] || counts[1]) ? 30 + 30 * std::max(counts[0], counts[1]) : 0) :
         (counts[0] ? 30 + 30 * counts[0] : 0) + (counts[1] ? 30 + 30 * counts[1] : 0);
-    return 450 + (width < 740 ? 44 : 0) + int(view.paths.size()) * 40 + featureHeight +
+    return 450 + (width < 740 ? 44 : 0) + int(view.paths.size() + view.choices.size()) * 40 + featureHeight +
         int((maintenance + (width >= 740 ? 2 : 1)) / (width >= 740 ? 3 : 2)) * 40;
 }
 } // namespace preparer

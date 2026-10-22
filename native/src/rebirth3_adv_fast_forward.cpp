@@ -187,25 +187,9 @@ bool BlackoutActive() noexcept {
     return enabled && adv && *reinterpret_cast<const uint32_t*>(adv + AdvModeOffset) == 0;
 }
 uintptr_t InfoHandle() noexcept {
-    const uintptr_t manager = *reinterpret_cast<const uintptr_t*>(gameBase + 0x49a4c8);
-    // Inline AdvWndInfo record begins at manager+0x6c, not a pointer at +0x6c.
-    if (manager && *reinterpret_cast<const uintptr_t*>(manager) &&
-        (*reinterpret_cast<const uint32_t*>(manager + 0x27c) & 1)) {
-        const auto widget = *reinterpret_cast<const uintptr_t*>(manager + 0x70);
-        if (widget) return widget;
-    }
-    // Script-owned ADV_INFO records are separate from the inline manager
-    // record. Follow the same visible-widget list used by 0x0066e020.
-    const auto windows = *reinterpret_cast<const uintptr_t*>(gameBase + 0x684ee4);
-    if (!windows) return 0;
-    auto widget = *reinterpret_cast<const uintptr_t*>(windows + 0x59a38);
-    for (size_t count = 0; widget && count < 4096; ++count) {
-        const auto name = reinterpret_cast<const char*>(widget + 0x74);
-        if (std::memcmp(name, "AdvWndInfo", sizeof("AdvWndInfo")) == 0 ||
-            std::memcmp(name, "AdvWndInfoMoney", sizeof("AdvWndInfoMoney")) == 0) return widget;
-        widget = *reinterpret_cast<const uintptr_t*>(widget + 0x10);
-    }
-    return 0;
+    // Independently validated visible-widget list used by 0x0066e020.
+    constexpr adv_operations::InfoWidgetLayout layout{0x49a4c8, 0x684ee4, 0x59a38, 0x74};
+    return adv_operations::InfoWidget(gameBase, layout);
 }
 
 bool SkipPresentationWaits() noexcept {

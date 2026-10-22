@@ -134,6 +134,34 @@
       "native/tests",
       "-p",
       "test_shipped_config.py"
+    ],
+    [
+      "native/test-save-anywhere.cmd"
+    ],
+    [
+      "native/test-load-timing.cmd"
+    ],
+    [
+      "native/test-load-timing-core.cmd"
+    ],
+    [
+      "native/build-asset-store-test.cmd"
+    ],
+    [
+      "native/build-asset-entry-test.cmd"
+    ],
+    [
+      "{python}",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "native/tests",
+      "-p",
+      "test_asset_store.py"
+    ],
+    [
+      "build/asset-entry-build/asset-entry-test.exe"
     ]
   ],
   "package_files": [

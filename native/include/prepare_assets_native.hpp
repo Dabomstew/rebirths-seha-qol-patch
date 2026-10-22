@@ -18,6 +18,7 @@ struct Result {
     uint64_t files = 0;
     uint64_t bytes = 0;
     uint64_t reused = 0;
+    uint64_t skipped = 0;
     bool fullCoverage = true;
 };
 using Report = std::function<void(const Progress&)>;
@@ -39,4 +40,8 @@ Result RunAssets(const fs::path& game, const fs::path& output, uint32_t gameId,
 Result VerifyAssets(const fs::path& game, const fs::path& output, uint32_t gameId,
                     const Report& report = {}, const Cancel& cancel = {},
                     TransformProfile profile = TransformProfile::Raw);
+Result ExtractLooseAssets(const fs::path& game, const fs::path& output, uint32_t gameId,
+                          const Report& report = {}, const Cancel& cancel = {});
+Result InspectLooseAssets(const fs::path& game, const fs::path& output, uint32_t gameId,
+                          const Report& report = {}, const Cancel& cancel = {});
 } // namespace rebirths::prepare

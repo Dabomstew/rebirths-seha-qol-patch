@@ -4,3 +4,4 @@ native\src\prepare_config.cpp
 native\src\prepare_install.cpp
 native\src\prepare_executable.cpp
 native\src\prepare_game.cpp
+native\src\prepare_loose_assets.cpp

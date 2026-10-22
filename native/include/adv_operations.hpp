@@ -1,8 +1,35 @@
 #pragma once
 
 #include <Windows.h>
+#include <cstdint>
+#include <cstring>
 
 namespace rebirths::adv_operations {
+
+struct InfoWidgetLayout {
+    uint32_t managerRva, windowsRva, listHeadOffset, nameOffset;
+};
+
+// Independently validated game layouts select this identical native traversal.
+// The inline record at manager+0x6c is not a pointer; its widget is at +0x70.
+inline uintptr_t InfoWidget(uintptr_t base, const InfoWidgetLayout& layout) noexcept {
+    const auto manager = *reinterpret_cast<const uintptr_t*>(base + layout.managerRva);
+    if (manager && *reinterpret_cast<const uintptr_t*>(manager) &&
+        (*reinterpret_cast<const uint32_t*>(manager + 0x27c) & 1)) {
+        const auto widget = *reinterpret_cast<const uintptr_t*>(manager + 0x70);
+        if (widget) return widget;
+    }
+    const auto windows = *reinterpret_cast<const uintptr_t*>(base + layout.windowsRva);
+    if (!windows) return 0;
+    auto widget = *reinterpret_cast<const uintptr_t*>(windows + layout.listHeadOffset);
+    for (size_t count = 0; widget && count < 4096; ++count) {
+        const auto name = reinterpret_cast<const char*>(widget + layout.nameOffset);
+        if (std::memcmp(name, "AdvWndInfo", sizeof("AdvWndInfo")) == 0 ||
+            std::memcmp(name, "AdvWndInfoMoney", sizeof("AdvWndInfoMoney")) == 0) return widget;
+        widget = *reinterpret_cast<const uintptr_t*>(widget + 0x10);
+    }
+    return 0;
+}
 
 // The adapter validates the record and its independently verified owner/mode.
 // These are the four games' identical native terminal stores. Inactive records

@@ -20,10 +20,29 @@ also lets you select and copy its full path; choose a game from its list or use
 
 The window scales with the display and can be resized. Settings are grouped for
 the selected game; unavailable game-specific settings are omitted. During
-preparation, **Close** becomes **Cancel**, which stops at a safe boundary.
+preparation or loose-file extraction, **Close** becomes **Cancel**, which stops at a safe boundary.
 Closing the window during work waits for safe completion. Installation and
 maintenance finish before the window closes. Closing also cancels any pending game launch.
 **Rollback last update** and **Uninstall patch** retain prepared assets.
+
+## Extract loose files for modding
+
+Choose **Extract loose files...**, check the destination in the confirmation,
+and choose **Yes** to begin. This extracts the selected game's archive files and
+installed DLC, then enables loose-file loading. The default destination is
+`loosefiles` beside the game EXE; `[Patches] LooseFileDirectory` in the installed
+INI changes it. For example, the item database is placed at
+`loosefiles/data/SYSTEM/database/stitem.gbin`.
+
+The original archives stay intact. Existing destination files are kept, including
+modded or empty files. This action extracts original files at their original size,
+independently of story-image downscaling. It needs enough free space for the files
+that are missing. **Cancel** keeps completed files so the action can be resumed.
+Loading is enabled only after extraction finishes successfully. Some Re;Birth2
+copies have one Help image that cannot be extracted safely; the preparer reports
+it and leaves the original archive available for it.
+
+See [Loose files](CONFIGURATION.md#loose-files) for settings and loading priority.
 
 ## Games and asset location
 
@@ -53,8 +72,8 @@ checked, completely silent sound-effect endings in Re;Birth2/Re;Birth3.
 Re;Birth2 English and Re;Birth3 voices stay unchanged. Sega Hard Girls is unaffected.
 
 Original audio files stay intact. The patch changes playback metadata in memory;
-checking the audio banks requires reading them at startup. Updates keep your
-saved choice. Set `TrimSilentAudioTails=0` under `[Patches]` in
+optional integrity diagnostics can check the complete audio banks and are off
+by default. Updates keep your saved choice. Set `TrimSilentAudioTails=0` under `[Patches]` in
 `rebirths-patches.ini` to disable it, or `1` to enable it. For Re;Birth3, the INI
 is under the game's `Birth3\` folder. There is no preparer checkbox for this setting.
 

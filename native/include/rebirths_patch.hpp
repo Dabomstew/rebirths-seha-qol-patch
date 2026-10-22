@@ -68,6 +68,10 @@ inline const char* PatchOutcomeName(PatchOutcome outcome) noexcept {
 
 std::wstring ModulePath(HMODULE module);
 Digest HashFile(const std::wstring& path);
+struct ExecutableIdentity { Digest digest; const GameSpec* spec; };
+// First use must be outside loader lock. Share one startup hash, including a
+// memoized failure, across core initialization and early audio callbacks.
+const ExecutableIdentity& ProcessIdentity();
 int Option(const Context& context, const wchar_t* section, const wchar_t* key, int fallback);
 void Log(const char* format, ...) noexcept;
 bool RetargetCalls(const Context& context, const CallSite* sites, size_t count) noexcept;

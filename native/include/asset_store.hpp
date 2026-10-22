@@ -34,8 +34,9 @@ std::string CanonicalPath(std::string name, bool manager=false);
 // above that root may be linked Steam-library/Wine paths and are not managed.
 std::filesystem::path CheckedPath(const std::filesystem::path& root,const std::string& relative={});
 Handle OpenRead(const std::filesystem::path& path);
+std::wstring Extended(const std::filesystem::path& path);
 Hash HashRange(HANDLE file,uint64_t start,uint64_t length);
 uint64_t FileSize(HANDLE file);
-Store Load(const std::filesystem::path& root,const std::filesystem::path& gameRoot,uint32_t game);
+Store Load(const std::filesystem::path& root,const std::filesystem::path& gameRoot,uint32_t game,bool verify=false);
 Handle OpenAsset(const Store& store,const File& file,bool verify);
 }

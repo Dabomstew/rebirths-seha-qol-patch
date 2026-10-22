@@ -12,6 +12,39 @@ int wmain(int argc,wchar_t** argv){
         }
         if(argc<3||argc>4)throw std::runtime_error("usage: preparer-test inspect|settings|prepare|prepare-raw|prepare-adv-cg|prepare-ma123|prepare-large-ma|rollback|uninstall|apply-4gb|restore-exe game [assets]");
         auto game=rebirths::prepare::OpenGame(argv[2]);auto action=std::wstring(argv[1]);
+        if(action==L"extract-plan") {
+            auto settings=rebirths::prepare::ReadSettings(game);
+            auto result=rebirths::prepare::InspectLooseAssets(game.directory,settings.looseFiles,game.id);
+            std::printf("files=%llu bytes=%llu skipped=%llu\n",result.files,result.bytes,result.skipped);return 0;
+        }
+        if(action==L"ui-actions") {
+            rebirths::prepare::UiAdapter adapter; auto view=adapter.Open(argv[2]);
+            for(const auto& cap:adapter.Actions(view))
+                std::printf("%d enabled=%d confirm=%d\n",int(cap.action),cap.enabled,!cap.confirmation.empty());
+            return 0;
+        }
+        if(action==L"extract-no-confirm" || action==L"extract-ui") {
+            rebirths::prepare::UiAdapter adapter;
+            preparer::Session session(adapter,[](const auto&,const auto&){throw std::runtime_error("Unexpected launch");});
+            session.Select(adapter.Open(argv[2]));
+            if(session.Begin(preparer::Action::Extract))throw std::runtime_error("Missing extraction confirmation gate");
+            if(action==L"extract-ui") {
+                if(!session.Begin(preparer::Action::Extract,true))throw std::runtime_error("Extract action unavailable");
+                while(!session.Ready())std::this_thread::yield();
+                auto outcome=session.Finish();
+                if(outcome.state!=preparer::State::Completed)throw std::runtime_error("Extraction failed");
+            }
+            std::printf("OK\n");return 0;
+        }
+        if(action==L"extract" || action==L"extract-cancel" || action==L"extract-stale") {
+            auto settings=rebirths::prepare::ReadSettings(game);
+            if(action==L"extract-stale")settings.configHash=std::string(64,'0');
+            bool stop=false;
+            auto result=rebirths::prepare::ExtractAndInstall(game,settings,[&](const rebirths::prepare::Progress& p){
+                if(action==L"extract-cancel"&&p.stage==L"Extracting loose files"&&p.completed>=1)stop=true;
+            },[&]{return stop;});
+            std::printf("files=%llu kept=%llu skipped=%llu\n",result.files,result.reused,result.skipped);return 0;
+        }
         if(action==L"ui-features") {
             rebirths::prepare::UiAdapter adapter; auto view = adapter.Open(argv[2]);
             for (auto& f : view.features) std::printf("%s=%d group=%u\n", f.id.c_str(), f.value, f.group);

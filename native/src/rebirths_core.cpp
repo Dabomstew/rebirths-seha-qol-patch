@@ -10,6 +10,8 @@
 #include "fast_texture_conversion.hpp"
 #include "fast_face_texture_creation.hpp"
 #include "tutorial_skip.hpp"
+#include "save_anywhere.hpp"
+#include "load_timing.hpp"
 #include "enemy_turn_softlock.hpp"
 #include "rebirth3_adv_auto_skip.hpp"
 #include <cstdarg>
@@ -53,8 +55,9 @@ void Initialize(HMODULE proxy) noexcept {
         logPath = directory + L"\\rebirths-patches.log";
         Log("Rebirths / Sega Hard Girls QoL Patch %s", PATCH_RELEASE_VERSION);
         const HMODULE game = GetModuleHandleW(nullptr);
-        const Digest digest = HashFile(ModulePath(game));
-        const GameSpec* spec = IdentifyGame(digest);
+        const auto& identity = ProcessIdentity();
+        const Digest& digest = identity.digest;
+        const GameSpec* spec = identity.spec;
         if (!spec) {
             char hexadecimal[65]{};
             for (size_t index = 0; index < digest.size(); ++index)
@@ -74,13 +77,17 @@ void Initialize(HMODULE proxy) noexcept {
             Log("recognized target has no validated ADV installers; patches disabled");
             return;
         }
+        // Timing is optional to readers, always installed for a verified plugin.
+        InstallLoadTiming(context);
         const auto enabled = [&](FeatureId feature) {
             return ReadRuntimeFeature(spec->id, feature, [&](const wchar_t* key, int fallback) {
                 return Option(context, L"Patches", key, fallback);
             });
         };
-        if (enabled(FeatureId::UncompressedAssets)) InstallUncompressedAssets(context);
-        else Log("UncompressedAssets disabled");
+        const bool prepared=enabled(FeatureId::UncompressedAssets),loose=enabled(FeatureId::LooseFiles);
+        if (prepared||loose) InstallUncompressedAssets(context,prepared,loose);
+        if (!prepared) Log("UncompressedAssets disabled");
+        if (!loose) Log("LooseFiles disabled");
         if (enabled(FeatureId::EnemyTurnSoftlockFix)) InstallEnemyTurnSoftlockFix(context);
         else Log("EnemyTurnSoftlockFix disabled");
         if (enabled(FeatureId::FastTextureConversion))
@@ -88,6 +95,8 @@ void Initialize(HMODULE proxy) noexcept {
         else Log("FastTextureConversion disabled or unsupported");
         if (enabled(FeatureId::AdvFastForward)) InstallAdvFastForward(context);
         else Log("AdvFastForward disabled");
+        if (enabled(FeatureId::SaveAnywhere)) InstallSaveAnywhere(context);
+        else Log("SaveAnywhere disabled");
         if (enabled(FeatureId::SkipTutorials)) InstallSkipTutorials(context);
         else Log("SkipTutorials disabled");
         if (enabled(FeatureId::AdvAutoSkip)) InstallAdvAutoSkip(context);

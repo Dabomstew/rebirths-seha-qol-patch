@@ -68,7 +68,7 @@ def package_contract(configuration):
         contract = {'proxy_definition': legacy[configuration['project']],
                     'proxy_registry': 'native/proxy-hashes.txt',
                     'preparer_resources': {'proxy': 101, 'registry': 102, 'configuration': 103},
-                    'excluded_patterns': [r'save[\s_-]*anywhere']}
+                    'excluded_patterns': []}
     need(isinstance(contract, dict), 'package_contract must be an object')
     need(not set(contract) - {'proxy_definition', 'proxy_registry', 'preparer_resources', 'excluded_patterns'},
          'Unknown package_contract key')

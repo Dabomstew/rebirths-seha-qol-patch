@@ -19,5 +19,7 @@
         'NepstationSkip' = '0'
         'TrimSilentAudioTails' = '1'
         'EnemyTurnSoftlockFix' = '1'
+        'SaveAnywhere' = '0'
+        'LooseFiles' = '0'
     }
 }

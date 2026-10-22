@@ -50,6 +50,10 @@ std::vector<preparer::Capability> UiAdapter::Actions(const preparer::View& view)
     using A = preparer::Action;
     std::vector<preparer::Capability> result{{A::Install}, {A::Prepare}, {A::Play}, {A::Rollback}, {A::Uninstall}};
     const auto data = std::static_pointer_cast<const Snapshot>(view.snapshot);
+    if (data) result.push_back({A::Extract, !data->settings.looseFiles.empty(),
+        L"Extract all available game and installed DLC assets to:\n\n" + data->settings.looseFiles.wstring() +
+        L"\n\nThis can take several minutes and requires additional disk space. Existing files will be kept. "
+        L"Loose-file loading will be enabled when extraction finishes. Continue?"});
     result.push_back({A::Patch4GB, data && data->game.originalExecutable});
     result.push_back({A::RestoreExe, data && data->game.ntcoreExecutable});
     return result;
@@ -83,6 +87,16 @@ preparer::Outcome UiAdapter::Execute(preparer::Action action, const preparer::Vi
             PrepareAndInstall(data->game, settings, [&](const Progress& p) {
                 if (report) report({p.stage, p.current, L"files", p.completed, p.total});
             }, cancel); summary = L"Preparation complete."; break;
+        case A::Extract: {
+            auto result = ExtractAndInstall(data->game, settings, [&](const Progress& p) {
+                if (report) report({p.stage, p.current, L"files", p.completed, p.total});
+            }, cancel);
+            summary = L"Loose files extracted and loading enabled. " + std::to_wstring(result.files - result.reused) +
+                L" files extracted; " + std::to_wstring(result.reused) + L" existing files kept.";
+            if (result.skipped) summary += L" " + std::to_wstring(result.skipped) +
+                L" unreadable original file could not be extracted and will use its original archive.";
+            break;
+        }
         case A::Rollback: Rollback(data->game); summary = L"Last update rolled back."; break;
         case A::Uninstall: Uninstall(data->game); summary = L"Patch uninstalled. Your prepared assets and settings have been kept."; break;
         case A::Patch4GB: Apply4GB(data->game); summary = L"4GB patch applied."; break;
@@ -91,7 +105,7 @@ preparer::Outcome UiAdapter::Execute(preparer::Action action, const preparer::Vi
         }
         return {preparer::State::Completed, L"Action complete", summary};
     } catch (const std::exception& e) {
-        if (action == A::Prepare && std::string(e.what()).rfind("Cancelled", 0) == 0) throw preparer::Cancelled(e.what());
+        if (preparer::Cancellable(action) && std::string(e.what()).rfind("Cancelled", 0) == 0) throw preparer::Cancelled(e.what());
         throw;
     }
 }

@@ -8,12 +8,13 @@ from test_prepare_game_native import PreparerFixture, digest
 
 class Ui(PreparerFixture):
     def test_previous_production_proxy_updates_and_rolls_back(self):
-        # Supply audited bytes extracted from the retained 0.2.0 release package.
+        # Supply audited bytes and an independently pinned previous-release hash.
         # This exercises recognition and transactions rather than reading the registry.
         previous = Path(os.environ.get('REBIRTHS_PREVIOUS_RELEASE_PROXY', 'unavailable-previous-release-proxy'))
         if not previous.is_file():
             self.skipTest('Retained 0.2.0 production proxy was not supplied')
-        self.assertEqual(digest(previous), 'b506b808e328c37db9481712fef6807fe6a75c6f19ab17b384bef8dfafc866f9')
+        self.assertEqual(digest(previous), os.environ.get('REBIRTHS_PREVIOUS_RELEASE_SHA256',
+            'b506b808e328c37db9481712fef6807fe6a75c6f19ab17b384bef8dfafc866f9'))
         old = previous.read_bytes()
         for index in range(4):
             with self.subTest(game=index):

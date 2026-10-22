@@ -87,6 +87,7 @@ void AppendRows(const fs::path& root, const char* scope, const Source& source, u
                 uint32_t game, TransformProfile profile, bool exclude, bool allowWrite,
                 std::vector<Row>& all, Result& result, const Report& report, const Cancel& cancel);
 J Exclusions(uint32_t id, const fs::path& game);
+J Rb2Exclusions();
 J Owner(uint32_t id, const fs::path& game, const J& exclusions, TransformProfile profile);
 TransformProfile ReadOwner(const fs::path& owner, uint32_t id, const fs::path& game,
                            const J* sourceExclusions = nullptr);

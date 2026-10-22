@@ -39,4 +39,12 @@ struct NativeApi {
 // Only publishes output after full initialization; false leaves original Open available.
 bool OpenPrepared(const Store& store,const NativeApi& api,Manager* manager,
                   const char* name,uint32_t* output,bool verify,bool& dlc);
+// Names are relative to the mounted manager namespace (e.g. data/SYSTEM).
+bool OpenLoose(const std::filesystem::path& root,const NativeApi& api,Manager* manager,
+               const char* name,uint32_t* output);
+enum class Source { Original, Loose, Prepared };
+// A failed provider must not suppress the next provider or alter caller output.
+Source OpenOverride(const std::filesystem::path* loose,const Store* prepared,
+                    const NativeApi& api,Manager* manager,const char* name,
+                    uint32_t* output,bool verify,bool& dlc,unsigned& errors) noexcept;
 }
