@@ -2,7 +2,7 @@
   "version": "1.0.7",
   "source": "scaffold-game-preparer/assets/common",
   "files": {
-    ".gitattributes": "0ac16869a4396d985143333561e05765db07ecb4270d25345fa8cd14411d9d05",
+    ".gitattributes": "fa1ec0d05565e61f4637b1ffe6964b8c9c32fbbe6da5c0bddd8913f8229ad71b",
     "preparer.cpp": "a406dc76ea7496a8a1a5dde8e37440959cbea5f96693fe619311761e351064bb",
     "preparer.hpp": "ceb3e094bc296cfd27615a2679f78659cecdbeacef130fba08f96754c2ac3136",
     "preparer_win32.cpp": "c5ef56aaeb1fdef6258e80a8055e003aadc60e67176f4698e44bbd88916875c6",
